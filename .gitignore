@@ -1,0 +1,26 @@
+# Môi trường ảo Python
+.venv/
+venv/
+ENV/
+env/
+
+# Pycache và file dịch Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Dữ liệu và log
+data/
+experiments/
+demo/
+*.log
+*.pose
+
+# Hệ điều hành
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
