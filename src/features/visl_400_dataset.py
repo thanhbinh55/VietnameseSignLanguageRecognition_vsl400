@@ -22,7 +22,10 @@ class VISL400Dataset(BaseDataset):
                 "data": data_dir,
             }
 
-        train_df, val_df, test_df, gloss2id = load_visl_400(data_dict, gloss2id_file)
+        train_df, val_df, test_df, gloss2id = load_visl_400(
+            data_dict, 
+            gloss2id_file if gloss2id_file.exists() else None
+        )
         id2gloss = {v: k for k, v in gloss2id.items()}
 
         dataset = DatasetDict({

@@ -22,15 +22,8 @@ _URLS = {
 
 def load_visl_400(
     data_dict: Dict[str, Dict[str, Path]],
-    gloss2id_file: Path,
+    gloss2id_file: Path = None,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, Dict[str, int]]:
-    gloss2id = pd.read_csv(
-        gloss2id_file,
-        delimiter=",",
-        names=["id", "gloss"],
-        index_col="gloss",
-    )
-    gloss2id = gloss2id.to_dict()["id"]
 
     dfs = []
     for cam, file_dict in data_dict.items():
@@ -51,11 +44,24 @@ def load_visl_400(
             }
         )
         df["cam_id"] = cam[-1]
-        df["gloss_id"] = df["gloss"].map(gloss2id)
         df["video"] = df["video_id"].apply(lambda x: str(data_dir / f"{x}.mp4"))
         df["pose"] = df["video_id"].apply(lambda x: str(data_dir / f"{x}.pose"))
         dfs.append(df)
     df = pd.concat(dfs, ignore_index=True)
+
+    if gloss2id_file is not None and Path(gloss2id_file).exists():
+        gloss2id = pd.read_csv(
+            gloss2id_file,
+            delimiter=",",
+            names=["id", "gloss"],
+            index_col="gloss",
+        )
+        gloss2id = gloss2id.to_dict()["id"]
+    else:
+        unique_glosses = sorted(df["gloss"].unique())
+        gloss2id = {gloss: idx for idx, gloss in enumerate(unique_glosses)}
+
+    df["gloss_id"] = df["gloss"].map(gloss2id)
 
     common_signer_ids = {
         "020": ("1", "2", "3"),
