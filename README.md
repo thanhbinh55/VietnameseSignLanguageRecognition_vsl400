@@ -109,10 +109,17 @@ Run inference (evaluation or producing predictions) with:
 python src/inference.py --config_path src/configs/inference/config.yaml
 ```
 
+For the local SPOTER webcam demo trained in `experiments/spoter_m4_cam1`, run:
+
+```bash
+.venv/bin/python src/demo_web.py --config_path src/configs/inference/spoter_m4_cam1.yaml
+```
+
+Then open `http://127.0.0.1:7860`, allow camera access, and press **Start camera**. Results are saved to `demo/spoter_m4_cam1_webcam/demo_web_results.csv` when you press **Save CSV** or stop the demo.
+
 There are also helpers for model conversion and evaluation:
 
 - `src/evaluate_model.py` — run evaluation metrics on predictions.
 - `src/extract_keypoints.py` — utilities to extract pose/keypoint features from videos.
-
 
 

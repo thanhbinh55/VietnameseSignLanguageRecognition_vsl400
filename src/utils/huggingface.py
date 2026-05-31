@@ -6,11 +6,22 @@ from huggingface_hub import HfApi, hf_hub_url, HfFileSystem
 def exists_on_hf(repo_id: str, repo_type: str = "model") -> bool:
     '''
     '''
-    fs = HfFileSystem()
-    if repo_type == "model":
-        return fs.exists(repo_id)
-    elif repo_type == "dataset":
-        return fs.exists(f"datasets/{repo_id}")
+    if repo_id is None:
+        return False
+
+    repo_id = str(repo_id)
+    if repo_id.upper() == "DEFAULT" or Path(repo_id).exists():
+        return False
+
+    try:
+        fs = HfFileSystem()
+        if repo_type == "model":
+            return fs.exists(repo_id)
+        elif repo_type == "dataset":
+            return fs.exists(f"datasets/{repo_id}")
+    except Exception:
+        return False
+
     raise ValueError("Invalid repo_type. Must be either 'model' or 'dataset'")
 
 

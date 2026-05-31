@@ -1,5 +1,4 @@
 import json
-import evaluate
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
@@ -14,9 +13,6 @@ from sklearn.metrics import (
 )
 
 
-accuracy = evaluate.load("accuracy")
-
-
 def compute_flops_and_params(model, inputs: dict) -> tuple:
     if "pose" in inputs:
         inputs = inputs["pose"]
@@ -24,6 +20,9 @@ def compute_flops_and_params(model, inputs: dict) -> tuple:
         inputs = inputs["video"].permute(1, 0, 2, 3)
     inputs = inputs.unsqueeze(0).to(model.device)
     macs, params = profile(model, inputs=(inputs,), verbose=False)
+    for module in model.modules():
+        module._buffers.pop("total_ops", None)
+        module._buffers.pop("total_params", None)
     flops = macs * 2
     return flops, params
 
@@ -100,12 +99,7 @@ def compute_metrics(eval_pred):
     scores = {}
 
     predictions = np.argmax(eval_pred.predictions, axis=1)
-    scores.update(
-        accuracy.compute(
-            predictions=predictions,
-            references=eval_pred.label_ids,
-        )
-    )
+    scores["accuracy"] = float(np.mean(predictions == eval_pred.label_ids))
     scores.update(
         {
             "f1": f1_score(

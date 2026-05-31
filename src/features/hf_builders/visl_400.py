@@ -83,7 +83,7 @@ def load_visl_400(
     val_df = (
         val_test_df
         .groupby(["gloss_id", "cam_id"], group_keys=False)
-        .apply(lambda x: x.sample(frac=0.5, random_state=42))
+        .sample(frac=0.5, random_state=42)
     )
     test_df = val_test_df[~val_test_df.index.isin(val_df.index)]
 
@@ -243,7 +243,9 @@ class VISL400(datasets.GeneratorBasedBuilder):
             Sample.
         """
         for i, sample in enumerate(split_df.itertuples()):
-            if Path(sample.video).exists() and Path(sample.pose).exists():
+            pose_exists = Path(sample.pose).exists()
+            video_exists = Path(sample.video).exists()
+            if pose_exists or video_exists:
                 yield i, {
                     "video_id": sample.video_id,
                     "signer_id": sample.signer_id,
@@ -255,6 +257,6 @@ class VISL400(datasets.GeneratorBasedBuilder):
                     # "english_gloss": sample.english_gloss,
                     "cam_id": sample.cam_id,
                     "gloss_id": sample.gloss_id,
-                    "video": sample.video,
-                    "pose": sample.pose,
+                    "video": sample.video if video_exists else "",
+                    "pose": sample.pose if pose_exists else "",
                 }

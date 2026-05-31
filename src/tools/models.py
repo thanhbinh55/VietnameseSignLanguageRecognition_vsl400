@@ -22,17 +22,9 @@ from transformers.pipelines import PIPELINE_REGISTRY
 from visualization import draw_text_on_image
 from utils import exists_on_hf
 from models import (
-    Swin3DConfig, Swin3DImageProcessor, Swin3DForVideoClassification,
-    S3DConfig, S3DImageProcessor, S3DForVideoClassification,
-    VideoResNetConfig, VideoResNetImageProcessor, VideoResNetForVideoClassification,
-    MViTConfig, MViTImageProcessor, MViTForVideoClassification,
-    SLGCNConfig, SLGCNFeatureExtractor, SLGCNForGraphClassification,
     SPOTERConfig, SPOTERFeatureExtractor, SPOTERForGraphClassification,
-    DSTASLRConfig, DSTASLRFeatureExtractor, DSTASLRForGraphClassification,
-    VideoMAEConfig, VideoMAEImageProcessor, VideoMAEForVideoClassification
 )
 from pipelines import (
-    VideoClassificationPipeline,
     SLGCNGraphClassificationPipeline,
     SPOTERGraphClassificationPipeline,
 )
@@ -89,6 +81,11 @@ def load_rgb_model_for_training(
     '''
     if model_config.arch in HUGGINGFACE_RGB_BASED_MODELS:
         if model_config.arch == "videomae":
+            from models.videomae import (
+                VideoMAEConfig,
+                VideoMAEImageProcessor,
+                VideoMAEForVideoClassification,
+            )
             config_class = VideoMAEConfig
             processor_class = VideoMAEImageProcessor
             model_class = VideoMAEForVideoClassification
@@ -344,16 +341,7 @@ def register_pipeline(model_config: ModelConfig) -> Pipeline:
             feature_extractor=processor,
         )
 
-    PIPELINE_REGISTRY.register_pipeline(
-        "video-classification",
-        pipeline_class=VideoClassificationPipeline,
-        pt_model=AutoModelForVideoClassification,
-        type="multimodal",
-    )
-    return VideoClassificationPipeline(
-        model=model,
-        image_processor=processor,
-    )
+    raise NotImplementedError("Video classification pipeline requires pytorchvideo which is not installed.")
 
 
 def load_pipeline(
@@ -363,20 +351,21 @@ def load_pipeline(
     '''
     '''
     if model_config.arch in POSE_BASED_MODELS:
-        return pipeline(
-            "video-classification",
-            model=model_config.pretrained,
-            feature_extractor=model_config.pretrained,
-            device=inference_config.device,
-            model_kwargs={
-                "cache_dir": inference_config.cache_dir,
-            },
-            trust_remote_code=True,
-            use_onnx=inference_config.use_onnx,
-            top_k=inference_config.top_k,
-            bone_stream=inference_config.bone_stream,
-            motion_stream=inference_config.motion_stream,
-        )
+        _, processor, model = load_model(model_config)
+
+        if model_config.arch == "spoter":
+            return SPOTERGraphClassificationPipeline(
+                model=model,
+                feature_extractor=processor,
+                device=inference_config.device,
+            )
+
+        if model_config.arch in ["sl_gcn", "dsta_slr"]:
+            return SLGCNGraphClassificationPipeline(
+                model=model,
+                feature_extractor=processor,
+                device=inference_config.device,
+            )
 
     return pipeline(
         "video-classification",

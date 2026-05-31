@@ -163,11 +163,19 @@ class TrainingConfig:
     num_train_epochs: int = 10
     per_device_train_batch_size: int = 8
     per_device_eval_batch_size: int = 8
+    gradient_accumulation_steps: int = 1
     dataloader_num_workers: int = 0
+    dataloader_pin_memory: bool = True
+    dataloader_persistent_workers: bool = False
 
     load_best_model_at_end: bool = True
     metric_for_best_model: str = "accuracy"
     resume_from_checkpoint: str = None
+    lr_scheduler_type: str = "linear"
+    save_safetensors: bool = True
+    fp16: bool = False
+    bf16: bool = False
+    use_mps_device: bool = False
 
     run_name: str = "swin3d"
     report_to: str = None

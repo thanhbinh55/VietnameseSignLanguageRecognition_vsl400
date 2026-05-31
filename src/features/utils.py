@@ -1,12 +1,5 @@
 from configs import TransformConfig
 from transformers import ImageProcessingMixin, FeatureExtractionMixin
-from pytorchvideo.transforms import (
-    ApplyTransformToKey,
-    Normalize,
-    UniformTemporalSubsample,
-    create_video_transform,
-    Div255,
-)
 from torchvision.transforms.v2 import (
     Compose,
     Resize,
@@ -20,6 +13,7 @@ from .augmentations import (
 from .transforms import (
     SPOTERShift,
     SPOTERJointSelect,
+    SPOTERPad,
     SPOTERTensorToDict,
     SPOTERSingleBodyDictNormalize,
     SPOTERSingleHandDictNormalize,
@@ -39,6 +33,13 @@ def get_rgb_transforms(
     processor: ImageProcessingMixin,
     transform_config: TransformConfig,
 ) -> Compose:
+    from pytorchvideo.transforms import (
+        ApplyTransformToKey,
+        Normalize,
+        UniformTemporalSubsample,
+        create_video_transform,
+        Div255,
+    )
     num_frames = processor.num_frames
     mean = processor.mean
     std = processor.std
@@ -128,6 +129,7 @@ def _get_spoter_transforms(
         SPOTERSingleBodyDictNormalize(),
         SPOTERSingleHandDictNormalize(),
         SPOTERDictToTensor(),
+        SPOTERPad(processor.num_frames),
         SPOTERShift()
     ])
 

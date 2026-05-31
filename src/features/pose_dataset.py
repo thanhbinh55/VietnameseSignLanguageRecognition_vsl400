@@ -1,4 +1,3 @@
-import torch
 from typing import Any
 from datasets import Dataset as HFDataset
 from torchvision.transforms.v2 import Compose
@@ -18,7 +17,7 @@ class PoseDataset(TorchDataset):
     def __getitem__(self, index) -> Any:
         sample = self.dataset[index]
         data = self.transforms(sample["pose"])
-        label = torch.Tensor([sample["gloss_id"]])
+        label = int(sample["gloss_id"])
         return {"pose": data, "label": label}
 
     def __len__(self) -> int:

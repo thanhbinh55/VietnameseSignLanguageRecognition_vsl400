@@ -1,6 +1,7 @@
 import os
 import shutil
 import logging
+import torch
 from argparse import Namespace
 from simple_parsing import ArgumentParser
 from transformers import TrainingArguments, Trainer
@@ -19,6 +20,23 @@ from tools import (
     rgb_collate_fn,
     pose_collate_fn
 )
+
+
+def train_with_checkpoint_compat(trainer: Trainer, resume_from_checkpoint: str = None):
+    if resume_from_checkpoint is None:
+        return trainer.train()
+
+    original_torch_load = torch.load
+
+    def torch_load_with_pickle_compat(*args, **kwargs):
+        kwargs.setdefault("weights_only", False)
+        return original_torch_load(*args, **kwargs)
+
+    torch.load = torch_load_with_pickle_compat
+    try:
+        return trainer.train(resume_from_checkpoint=resume_from_checkpoint)
+    finally:
+        torch.load = original_torch_load
 
 
 def get_args() -> Namespace:
@@ -93,12 +111,18 @@ def main(args: Namespace) -> None:
     )
     logging.info("Trainer created")
 
-    flops, params = compute_flops_and_params(model, next(iter(train_dataset)))
-    logging.info(f"FLOPs: {flops:,}")
-    logging.info(f"Number of parameters: {params:,}")
+    try:
+        flops, params = compute_flops_and_params(model, next(iter(train_dataset)))
+        logging.info(f"FLOPs: {flops:,}")
+        logging.info(f"Number of parameters: {params:,}")
+    except Exception as exc:
+        logging.warning(f"Skipping FLOPs/profile calculation: {exc}")
 
     logging.info("Training started")
-    trainer.train()
+    train_with_checkpoint_compat(
+        trainer,
+        resume_from_checkpoint=training_config.resume_from_checkpoint,
+    )
     logging.info("Training completed")
 
     trainer.save_model(training_config.output_dir)
@@ -107,7 +131,7 @@ def main(args: Namespace) -> None:
     logging.info("Evaluation started")
 
     val_output_dir = training_config.output_dir / "validation" / data_config.dataset
-    val_results = trainer.predict(test_dataset, metric_key_prefix="val")
+    val_results = trainer.predict(val_dataset, metric_key_prefix="val")
     logging.info(f"Validation results: {val_results.metrics}")
     save_evaluation_results(
         results=val_results,
@@ -124,7 +148,7 @@ def main(args: Namespace) -> None:
         classes=dataset.gloss2id.keys(),
         output_dir=test_output_dir,
     )
-    logging.info(f"Test results saved to {val_output_dir}")
+    logging.info(f"Test results saved to {test_output_dir}")
 
     if training_config.push_to_hub:
         upload_to_hf(

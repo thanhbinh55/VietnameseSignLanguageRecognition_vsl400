@@ -26,6 +26,16 @@ class VISL400Dataset(BaseDataset):
             data_dict, 
             gloss2id_file if gloss2id_file.exists() else None
         )
+        if self.data_config.modality == "pose":
+            train_df = train_df[
+                train_df["pose"].map(lambda path: Path(path).exists())
+            ].reset_index(drop=True)
+            val_df = val_df[
+                val_df["pose"].map(lambda path: Path(path).exists())
+            ].reset_index(drop=True)
+            test_df = test_df[
+                test_df["pose"].map(lambda path: Path(path).exists())
+            ].reset_index(drop=True)
         id2gloss = {v: k for k, v in gloss2id.items()}
 
         dataset = DatasetDict({

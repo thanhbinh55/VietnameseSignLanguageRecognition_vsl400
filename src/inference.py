@@ -30,6 +30,7 @@ def inference(config: InferenceConfig, pipeline: Pipeline) -> None:
     # Load video
     source = str(config.source) if config.source.is_file() else 0
     cap = cv2.VideoCapture(source)
+    source_fps = cap.get(cv2.CAP_PROP_FPS) or 25
     if config.output_dir is not None:
         writer = cv2.VideoWriter(
             str(config.output_dir / "output.mp4"),
@@ -57,15 +58,14 @@ def inference(config: InferenceConfig, pipeline: Pipeline) -> None:
             break
 
         # Recolor image to RGB, because mp processes on RGB image
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame.flags.writeable = False
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        rgb_frame.flags.writeable = False
 
         # Make detections
-        detection_results = keypoints_detector.process(frame)
+        detection_results = keypoints_detector.process(rgb_frame)
 
         # Recolor image back to BGR, because cv2 processes on BGR image
-        frame.flags.writeable = True
-        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+        rgb_frame.flags.writeable = True
 
         # Extract landmarks
         try:
@@ -96,14 +96,10 @@ def inference(config: InferenceConfig, pipeline: Pipeline) -> None:
         if left_arm_ok_to_get_frame or right_arm_ok_to_get_frame:
             # logging.info("Frame added to the list")
             predictions = Predictions()
-            data.append(detection_results if config.use_pose_model else frame)
+            data.append(rgb_frame.copy() if config.use_pose_model else frame.copy())
 
         # Calculate the start and end time of sign
         start_time, end_time = get_sample_timestamp(left_arm, right_arm)
-
-        # Convert from miliseconds to seconds
-        start_time /= 1_000
-        end_time /= 1_000
 
         # logging.info(f"start_time: {start_time} - end_time: {end_time}")
         # logging.info(f"\tLeft arm: {left_arm.start_time} - {left_arm.end_time} - {left_arm.is_up}")
@@ -124,7 +120,16 @@ def inference(config: InferenceConfig, pipeline: Pipeline) -> None:
                     break
 
             start_inference_time = time()
-            predictions = Predictions(predictions=pipeline(np.array(data)))
+            if config.use_pose_model:
+                sample = {
+                    "frames": data,
+                    "fps": source_fps,
+                    "width": frame.shape[1],
+                    "height": frame.shape[0],
+                }
+            else:
+                sample = np.array(data)
+            predictions = Predictions(predictions=pipeline(sample, top_k=config.top_k))
             predictions.inference_time = time() - start_inference_time
 
             predictions.start_time = start_time
