@@ -5,8 +5,8 @@
 
 ## 1. Hiện trạng Kiến trúc Dự án (Codebase Audit)
 Dự án đã được đồng bộ hóa và làm sạch trong tệp [architecture_analysis.md](VietnameseSignLanguageRecognition/docs/architecture_analysis.md) với các điểm cốt lõi:
-- **Mô hình hỗ trợ huấn luyện cục bộ (Train từ đầu):** Chỉ có **SPOTER** (Pose-based) và **VideoMAE** (RGB-based) là có mã nguồn mô hình đầy đủ tại `src/models/`.
-- **Mô hình phục vụ suy diễn (Inference/Evaluation):** **SL-GCN** và các mô hình khác đã lược bỏ định nghĩa local, thay vào đó mô hình được tải động từ checkpoint/Hugging Face Hub thông qua cờ `trust_remote_code=True` hoặc chạy bằng local ONNX runtime.
+- **Mô hình hỗ trợ huấn luyện cục bộ (Train từ đầu):** Chỉ có **SPOTER** (Pose-based) và **VideoMAE** (RGB-based) có mã nguồn mô hình đầy đủ tại `src/models/`.
+- **Cơ chế tải và huấn luyện SL-GCN:** Mã nguồn gốc PyTorch của SL-GCN không nằm trong repo Git cục bộ, do đó không hỗ trợ khởi tạo huấn luyện từ đầu (from scratch). Tuy nhiên, bạn vẫn có thể huấn luyện tinh chỉnh (fine-tuning), đánh giá hoặc suy diễn hoàn toàn cục bộ (offline) bằng cách trỏ `pretrained` tới thư mục checkpoint SL-GCN có sẵn trên máy (chứa weights kèm theo các file mã nguồn custom như `modeling_sl_gcn.py`). Cờ `trust_remote_code=True` sẽ tự động import mã nguồn custom này từ chính thư mục cục bộ đó mà không cần mạng. Ngoài ra, pipeline ONNX của SL-GCN sẽ trực tiếp đọc tệp `.onnx` ở local.
 - **Tiền xử lý cục bộ:** Đã cấu trúc lại dự án theo hướng thuần offline/cục bộ (không đẩy kết quả lên HF Hub, tắt Wandb, tự động ánh xạ nhãn từ file JSON metadata nếu thiếu `gloss.csv`). Các pipeline ONNX tự tìm kiếm tệp tin checkpoint `.onnx` ở thư mục local thay vì tải từ Hub.
 
 ---
