@@ -11,7 +11,6 @@ from utils import (
     config_logger,
     TrainingCallback,
     save_evaluation_results,
-    upload_to_hf,
     compute_flops_and_params,
 )
 from tools import (
@@ -150,27 +149,7 @@ def main(args: Namespace) -> None:
     )
     logging.info(f"Test results saved to {test_output_dir}")
 
-    if training_config.push_to_hub:
-        upload_to_hf(
-            repo_id=training_config.hub_model_id,
-            path=val_output_dir,
-            path_in_repo=f"validation/{data_config.dataset}",
-            repo_type="model",
-        )
-        upload_to_hf(
-            repo_id=training_config.hub_model_id,
-            path=test_output_dir,
-            path_in_repo=f"test/{data_config.dataset}",
-            repo_type="model",
-        )
-        logging.info(f"Results pushed to {training_config.hub_model_id}")
     logging.info("Evaluation completed")
-
-    if training_config.hub_model_id:
-        config.label2id = dataset.gloss2id
-        config.id2label = dataset.id2gloss
-        config.push_to_hub(training_config.hub_model_id)
-        logging.info(f"Model config pushed to {training_config.hub_model_id}")
 
 
 if __name__ == "__main__":
@@ -181,13 +160,6 @@ if __name__ == "__main__":
     shutil.copy(args.config_path[0], args.training.output_dir / "train.yaml")
     logging.info(f"Config file saved to {args.training.output_dir}")
 
-    if args.training.report_to == "wandb":
-        os.environ["WANDB_MODE"] = "run"
-        os.environ["WANDB_ENTITY"] = args.wandb_entity
-        os.environ["WANDB_PROJECT"] = args.wandb_project
-        logging.info(f"Wandb entity: {args.wandb_entity}")
-        logging.info(f"Wandb project: {args.wandb_project}")
-    else:
-        os.environ["WANDB_MODE"] = "disabled"
+    os.environ["WANDB_MODE"] = "disabled"
 
     main(args=args)

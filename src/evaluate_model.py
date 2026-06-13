@@ -9,7 +9,6 @@ from utils import (
     config_logger,
     TrainingCallback,
     save_evaluation_results,
-    upload_to_hf,
 )
 from tools import (
     load_model,
@@ -81,14 +80,6 @@ def main(args: Namespace) -> None:
         output_dir=eval_config.output_dir,
     )
     logging.info(f"Results saved to {eval_config.output_dir}")
-    if eval_config.push_to_hub:
-        upload_to_hf(
-            repo_id=eval_config.pretrained,
-            path=eval_config.output_dir,
-            path_in_repo=f"{eval_config.eval_set}/{data_config.dataset}",
-            repo_type="model",
-        )
-        logging.info(f"Results uploaded to: {eval_config.pretrained}")
     logging.info("Evaluation completed")
 
 

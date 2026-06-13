@@ -37,5 +37,3 @@ training:
   use_mps_device: true
   metric_for_best_model: accuracy
   report_to: null
-  push_to_hub: False
-  hub_model_id: null

@@ -179,21 +179,12 @@ class TrainingConfig:
 
     run_name: str = "swin3d"
     report_to: str = None
-    push_to_hub: bool = False
-    hub_model_id: str = None
-    hub_strategy: str = "checkpoint"
-    hub_private_repo: bool = True
 
     def __post_init__(self):
         self.output_dir = Path(self.output_dir)
         if str(self.output_dir) == "experiments":
             self.output_dir = self.output_dir / self.run_name
         self.output_dir.mkdir(parents=True, exist_ok=True)
-
-        if self.hub_model_id is not None:
-            self.push_to_hub = True
-            if len(self.hub_model_id.split("/")) == 1:
-                self.hub_model_id = f"{self.hub_model_id}/{self.run_name}"
 
 
 @dataclass
@@ -202,7 +193,6 @@ class EvaluationConfig:
     pretrained: str = None
     output_dir: str = "experiments"
     eval_set: str = "test"
-    push_to_hub: bool = False
     batch_size: int = 8
 
     def __post_init__(self):
@@ -225,7 +215,7 @@ class InferenceConfig:
     output_dir: str = "demo"
     use_onnx: bool = False
     device: str = "cpu"
-    cache_dir: str = "models/huggingface"
+    cache_dir: str = "models/cache"
 
     visualize: bool = False
     show_skeleton: bool = False

@@ -1,10 +1,8 @@
-import os
 import pandas as pd
 from typing import Union
+from pathlib import Path
 from configs import DataConfig
-from datasets import load_dataset
-from utils import exists_on_hf
-from huggingface_hub import hf_hub_download
+from datasets import DatasetDict
 from .utils import get_rgb_transforms, get_pose_transforms
 from transformers import ImageProcessingMixin, FeatureExtractionMixin
 from pytorchvideo.data import LabeledVideoDataset, make_clip_sampler
@@ -24,16 +22,10 @@ class BaseDataset:
                 self.dataset[split] = self.dataset[split].take(10)
 
     def _load(self) -> tuple:
-        if exists_on_hf(self.data_config.data_dir, "dataset"):
-            dataset, gloss2id, id2gloss = self._load_from_hf(
-                repo_id=self.data_config.data_dir,
-                subset=self.data_config.subset,
-            )
-        else:
-            dataset, gloss2id, id2gloss = self._load_from_local(
-                data_dir=self.data_config.data_dir,
-                subset=self.data_config.subset,
-            )
+        dataset, gloss2id, id2gloss = self._load_from_local(
+            data_dir=self.data_config.data_dir,
+            subset=self.data_config.subset,
+        )
         dataset = dataset.select_columns(
             ["video_id", "resolution", "gloss_id", "video", "pose"]
         )
@@ -42,56 +34,6 @@ class BaseDataset:
 
     def _load_from_local(self, data_dir: str, subset: str = None) -> tuple:
         raise NotImplementedError
-
-    def _load_from_hf(
-        self,
-        repo_id: str,
-        subset: str = None,
-        renamed_columns: dict = None,
-    ) -> tuple:
-        """
-        Load dataset from HuggingFace.
-
-        Parameters
-        ----------
-        repo_id : str
-            Dataset identifier on HuggingFace.
-        subset : str, optional
-            Subset name, by default None.
-        renamed_columns : dict, optional
-            Dictionary of renamed columns, by default None.
-
-        Returns
-        -------
-        datasets.Dataset
-            Dataset.
-        """
-        dataset = load_dataset(
-            repo_id, subset,
-            num_proc=os.cpu_count(),
-            cache_dir="data/external/huggingface",
-            trust_remote_code=True,
-        )
-
-        if renamed_columns is not None:
-            dataset = dataset.rename_columns(renamed_columns)
-
-        gloss2id_file = hf_hub_download(
-            repo_id=repo_id,
-            filename="gloss.csv",
-            repo_type="dataset",
-            cache_dir="data/external/huggingface",
-        )
-        gloss2id = pd.read_csv(
-            gloss2id_file,
-            delimiter=",",
-            names=["id", "gloss"],
-            index_col="gloss",
-        )
-        gloss2id = gloss2id.to_dict()["id"]
-        id2gloss = {v: k for k, v in gloss2id.items()}
-
-        return dataset, gloss2id, id2gloss
 
     def get_split(
         self,

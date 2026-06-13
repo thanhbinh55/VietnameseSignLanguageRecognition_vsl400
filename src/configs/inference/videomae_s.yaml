@@ -1,6 +1,6 @@
 model:
-  arch: videomae_s
-  pretrained: vsltranslation/videomae_s_v2.0
+  arch: videomae
+  pretrained: experiments/videomae_s_v2.0
 inference:
   source: webcam
   output_dir: demo/webcam

@@ -3,7 +3,7 @@ import numpy as np
 from typing import Union
 import onnxruntime as ort
 from transformers import Pipeline, AutoConfig
-from huggingface_hub import hf_hub_download
+from pathlib import Path
 from pytorchvideo.transforms import Normalize
 from torchvision.transforms.v2 import (
     Compose,
@@ -17,20 +17,20 @@ class VideoClassificationPipeline(Pipeline):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         if kwargs.pop("use_onnx", False):
-            repo_id = self.model.config._name_or_path
-            model_kwargs = kwargs.get("model_kwargs", {})
-            model_file = hf_hub_download(
-                repo_id=repo_id,
-                filename=f"{repo_id.split('/')[1]}.onnx",
-                cache_dir=model_kwargs.get("cache_dir", "models/huggingface"),
-            )
+            checkpoint_dir = Path(self.model.config._name_or_path)
+            model_name = checkpoint_dir.name
+            model_file = checkpoint_dir / f"{model_name}.onnx"
+            if not model_file.exists():
+                raise FileNotFoundError(
+                    f"ONNX model not found at '{model_file}'. "
+                    "Export the model first using convert_model_to_onnx.py."
+                )
             self.config = AutoConfig.from_pretrained(
-                repo_id,
+                str(checkpoint_dir),
                 trust_remote_code=True,
-                cache_dir=model_kwargs.get("cache_dir", "models/huggingface"),
             )
             self.id2label = self.config.id2label
-            self.model = ort.InferenceSession(model_file)
+            self.model = ort.InferenceSession(str(model_file))
         else:
             self.id2label = self.model.config.id2label
 

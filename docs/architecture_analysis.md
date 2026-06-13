@@ -44,7 +44,6 @@ VietnameseSignLanguageRecognition/
     ├── evaluate_model.py          ← [Entrypoint] Đánh giá model trên dataset
     ├── extract_keypoints.py       ← [Entrypoint] Trích xuất .pose từ video
     ├── demo_web.py                ← [Entrypoint] Demo realtime qua trình duyệt web
-    ├── register_pipeline.py       ← [Util] Đăng ký custom pipeline vào HF registry
     ├── visualization.py           ← [Util] Vẽ text lên frame ảnh
     │
     ├── configs/                   ← Cấu hình & tham số
@@ -66,7 +65,7 @@ VietnameseSignLanguageRecognition/
     │   └── utils.py               ← Class Arm, ok_to_get_frame(), calculate_angle()
     │
     ├── features/                  ← Dataset loader + Feature extraction
-    │   ├── base_dataset.py        ← Abstract BaseDataset (HF hub / local loading)
+    │   ├── base_dataset.py        ← Abstract BaseDataset (Đọc dữ liệu cục bộ)
     │   ├── visl_400_dataset.py    ← VISL400Dataset (kế thừa BaseDataset)
     │   ├── pose_dataset.py        ← PoseDataset (PyTorch Dataset cho .pose)
     │   ├── utils.py               ← get_rgb_transforms(), get_pose_transforms()
@@ -91,7 +90,7 @@ VietnameseSignLanguageRecognition/
     │       ├── configuration.py   ← VideoMAEConfig
     │       └── modelling.py       ← VideoMAEForVideoClassification
     │
-    ├── pipelines/                 ← HuggingFace Pipeline wrappers (inference)
+    ├── pipelines/                 ← Pipeline wrappers kế thừa transformers.Pipeline
     │   ├── spoter_graph_classification.py
     │   ├── sl_gcn_graph_classification.py
     │   └── video_classification.py
@@ -103,7 +102,6 @@ VietnameseSignLanguageRecognition/
     └── utils/                     ← Tiện ích chung
         ├── constants.py           ← POSE_BASED_MODELS, landmark lists, SLGCN_JOINTS
         ├── metrics.py             ← compute_metrics(), save_evaluation_results()
-        ├── huggingface.py         ← exists_on_hf(), upload_to_hf()
         ├── loggers.py             ← config_logger(), TrainingCallback
         └── pose.py                ← parse_keypoints()
 ```
@@ -133,7 +131,7 @@ flowchart TD
     end
 
     subgraph M3["📦 MODULE 3 — Dataset Loading & Splitting"]
-        H["📋 cam_N.json\ngloss.csv"]
+        H["📋 cam_N.json\n(gloss.csv tùy chọn)"]
         I["🏗️ load_visl_400()\nhf_builders/visl_400.py\nSigner-disjoint split"]
         J["📊 train / val / test DataFrames\n(shuffled seed=42)"]
         G & H --> I --> J
@@ -179,7 +177,7 @@ flowchart TD
     end
 
     subgraph M6["📦 MODULE 6 — Training"]
-        O["🏋️ HuggingFace Trainer\ntrain.py → main()"]
+        O["🏋️ HuggingFace Trainer\ntrain.py → main()\n(Wandb/Hub disabled)"]
         P["💾 Checkpoint\nexperiments/run_name/"]
         O --> P
     end
@@ -193,7 +191,7 @@ flowchart TD
     subgraph M8["📦 MODULE 8 — Inference / Demo"]
         S1["🖥️ inference.py\nVideo file / Webcam offline"]
         S2["🌐 demo_web.py\nRealtime Web HTTP Server"]
-        T["📡 Pipeline Wrapper\nSPOTERGraphClassificationPipeline\nSLGCNGraphClassificationPipeline"]
+        T["📡 Pipeline Wrapper\n(SPOTER / SL-GCN / VideoMAE)\nTải ONNX cục bộ từ checkpoint"]
         U["📋 Top-K Predictions\n{gloss, score}"]
         T --> S1 & S2 --> U
     end
@@ -237,10 +235,9 @@ flowchart TD
 
 | Khối | File | Hàm cụ thể |
 |---|---|---|
-| Đọc JSON + tạo split | `src/features/hf_builders/visl_400.py` | `load_visl_400(data_dict, gloss2id_file)` |
+| Đọc JSON + tạo split | `src/features/hf_builders/visl_400.py` | `load_visl_400(data_dict, gloss2id_file)` (gloss.csv tùy chọn) |
 | Logic signer-disjoint | `src/features/hf_builders/visl_400.py` | Lines 66–131 (signer ID assignment) |
 | Load local data | `src/features/base_dataset.py` | `_load_from_local()` |
-| Load từ HF Hub | `src/features/base_dataset.py` | `_load_from_hf()` |
 | Entry point từ train.py | `src/tools/features.py` | `load_dataset(data_config)` |
 | Tạo PyTorch dataset split | `src/features/base_dataset.py` | `get_split(split, processor)` |
 
@@ -292,12 +289,11 @@ flowchart TD
 
 | Khối | File | Hàm cụ thể |
 |---|---|---|
-| Entry point | `src/train.py` | `main(args)` |
+| Entry point | `src/train.py` | `main(args)` (Wandb/HF Hub upload đã lược bỏ) |
 | Tính FLOPs/params | `src/utils/metrics.py` | `compute_flops_and_params(model, inputs)` |
 | HuggingFace Trainer setup | `src/train.py` | `Trainer(model, args, train_dataset, ...)` |
 | Resume checkpoint | `src/train.py` | `train_with_checkpoint_compat(trainer, ckpt)` |
 | Lưu model | `src/train.py` | `trainer.save_model()` |
-| Upload HF Hub | `src/utils/huggingface.py` | `upload_to_hf()` |
 
 ### MODULE 7 — Evaluation
 
@@ -348,7 +344,7 @@ flowchart TD
 | Thay đổi | Lý do | Code |
 |---|---|---|
 | **Xóa self-attention trong decoder** | Giảm overfitting, "redundant self-attention" | `SPOTERTransformerDecoderLayer.forward()` — bỏ `tgt2 = self.self_attn(tgt,...)` |
-| **HuggingFace PreTrainedModel wrapper** | Tích hợp HF Trainer/Hub | `SPOTERForGraphClassification(PreTrainedModel)` |
+| **PreTrainedModel wrapper** | Tích hợp PyTorch / HF Trainer (Hub push tắt) | `SPOTERForGraphClassification(PreTrainedModel)` |
 | **Gaussian Noise augment** | Thêm robustness — không có trong SPOTER gốc | `SPOTERGaussianNoise` |
 | **FeatureExtractor config** | Lưu num_frames, num_points với model | `SPOTERFeatureExtractor` |
 
@@ -383,11 +379,12 @@ flowchart TD
 
 #### 🔵 TÙYCHỈNH
 
-| Thay đổi | Code |
-|---|---|
-| 3 bộ khớp tuỳ chọn: 27/31/59 | `SLGCN_JOINTS` trong `constants.py`, cấu hình qua `num_points` |
-| Bone/Motion Stream là TÙY CHỌN | `processor.bone_stream`, `processor.motion_stream` flag |
-| Augment 2D qua pose_format | `SLGCNAugment` → `pose.augment2d(rotation_std=0.2)` |
+| Thay đổi | Lý do / Chi tiết | Code |
+|---|---|---|
+| **3 bộ khớp tuỳ chọn: 27/31/59** | Cấu hình qua `num_points` | `SLGCN_JOINTS` trong `constants.py` |
+| **Bone/Motion Stream là TÙY CHỌN** | Bật/tắt linh hoạt qua flag | `processor.bone_stream`, `processor.motion_stream` |
+| **Augment 2D qua pose_format** | Tăng cường dữ liệu xương | `SLGCNAugment` → `pose.augment2d(rotation_std=0.2)` |
+| **Tải động qua HF Hub / ONNX** | Loại bỏ code model cục bộ (chỉ giữ code transform/pipeline). Load qua `trust_remote_code=True` khi suy diễn/đánh giá | `load_model()` / `AutoModel.from_pretrained` |
 
 #### 🟥 THỰC NGHIỆM
 
@@ -507,7 +504,7 @@ Bài báo VSL400 (2026) ghi rõ đây là các thông số "**empirically optimi
 | M2 (Keypoint) | ✅ Hoàn toàn | Output phải là .pose format tương thích `pose_format` |
 | M3 (Dataset) | ✅ Thêm class mới | Kế thừa `BaseDataset`, trả về video/pose path |
 | M4A/B/C (Transforms) | ✅ Độc lập nhau | Output shape phải khớp với model tương ứng |
-| M5 (Model) | ✅ Nếu giữ HF interface | Phải có Config + FeatureExtractor + Model classes |
+| M5 (Model) | ✅ Cho SPOTER & VideoMAE | Định nghĩa cục bộ; các model khác (SL-GCN) load dynamic qua HF Hub |
 | M6 (Training) | ✅ Chỉ cần sửa YAML | Không cần sửa code |
 | M7 (Evaluation) | ✅ Hoàn toàn | Độc lập, chỉ cần model + dataset |
 | M8 (Inference) | ✅ Hoàn toàn | Chỉ cần `load_pipeline()` trả về đúng interface |

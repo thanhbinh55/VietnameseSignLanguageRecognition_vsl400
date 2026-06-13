@@ -1,8 +1,8 @@
 model:
   arch: spoter
-  pretrained: vsltranslation/test_spoter
+  pretrained: experiments/spoter_m4_cam1
 inference:
-  source: webcam #data/processed/vsl_400/cam_1/000000.mp4
+  source: webcam
   output_dir: demo/run_1
   use_onnx: True
   show_skeleton: True

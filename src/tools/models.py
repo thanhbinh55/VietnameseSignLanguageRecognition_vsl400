@@ -1,7 +1,8 @@
-import torch
 import logging
+import torch
 import onnxruntime as ort
 from time import time
+from pathlib import Path
 from typing import Union
 from configs import ModelConfig, InferenceConfig, EvaluationConfig
 from utils import (
@@ -20,7 +21,6 @@ from transformers import (
 )
 from transformers.pipelines import PIPELINE_REGISTRY
 from visualization import draw_text_on_image
-from utils import exists_on_hf
 from models import (
     SPOTERConfig, SPOTERFeatureExtractor, SPOTERForGraphClassification,
 )
@@ -30,14 +30,35 @@ from pipelines import (
 )
 
 
+def _is_local_checkpoint(path: str) -> bool:
+    """Return True if path points to an existing local directory."""
+    if path is None:
+        return False
+    return Path(str(path)).exists()
+
+
 def load_model(
     model_config: Union[ModelConfig, EvaluationConfig],
     label2id: dict = None,
     id2label: dict = None,
     do_train: bool = False,
 ) -> tuple:
-    '''
-    '''
+    """
+    Load a model from a local checkpoint or initialise from scratch.
+
+    Parameters
+    ----------
+    model_config : ModelConfig | EvaluationConfig
+    label2id : dict, optional
+    id2label : dict, optional
+    do_train : bool
+        If True, prepare the model for training (gradient updates enabled).
+
+    Returns
+    -------
+    tuple
+        (config, processor, model)
+    """
     if isinstance(model_config, EvaluationConfig):
         do_train = False
 
@@ -46,27 +67,31 @@ def load_model(
             return load_pose_model_for_training(model_config, label2id, id2label)
         return load_rgb_model_for_training(model_config, label2id, id2label)
 
+    # Inference / evaluation: load from local checkpoint
+    if not _is_local_checkpoint(model_config.pretrained):
+        logging.error(
+            f"Checkpoint not found at '{model_config.pretrained}'. "
+            "Train the model first and point 'pretrained' to the local experiments/ directory."
+        )
+        exit(1)
+
     if model_config.arch in POSE_BASED_MODELS:
         processor = FeatureExtractionMixin.from_pretrained(
             model_config.pretrained,
             trust_remote_code=True,
-            cache_dir="models/huggingface",
         )
         model = AutoModel.from_pretrained(
             model_config.pretrained,
             trust_remote_code=True,
-            cache_dir="models/huggingface",
         )
     else:
         processor = ImageProcessingMixin.from_pretrained(
             model_config.pretrained,
             trust_remote_code=True,
-            cache_dir="models/huggingface",
         )
         model = AutoModelForVideoClassification.from_pretrained(
             model_config.pretrained,
             trust_remote_code=True,
-            cache_dir="models/huggingface",
         )
     model.eval()
     return model.config, processor, model
@@ -77,8 +102,24 @@ def load_rgb_model_for_training(
     label2id: dict = None,
     id2label: dict = None,
 ) -> tuple:
-    '''
-    '''
+    """
+    Load or initialise an RGB-based model for training.
+    If 'pretrained' is a local directory with a saved checkpoint, resume from it.
+    Otherwise initialise weights from scratch (or from ImageNet pretrained weights).
+    """
+    if _is_local_checkpoint(model_config.pretrained):
+        # Resume fine-tuning from a local checkpoint
+        processor = ImageProcessingMixin.from_pretrained(
+            model_config.pretrained,
+            trust_remote_code=True,
+        )
+        model = AutoModelForVideoClassification.from_pretrained(
+            model_config.pretrained,
+            ignore_mismatched_sizes=True,
+            trust_remote_code=True,
+        )
+        return model.config, processor, model
+
     if model_config.arch in HUGGINGFACE_RGB_BASED_MODELS:
         if model_config.arch == "videomae":
             from models.videomae import (
@@ -89,21 +130,9 @@ def load_rgb_model_for_training(
             config_class = VideoMAEConfig
             processor_class = VideoMAEImageProcessor
             model_class = VideoMAEForVideoClassification
-    elif exists_on_hf(model_config.pretrained):
-        processor = ImageProcessingMixin.from_pretrained(
-            model_config.pretrained,
-            trust_remote_code=True,
-            cache_dir="models/huggingface",
-        )
-        model = AutoModelForVideoClassification.from_pretrained(
-            model_config.pretrained,
-            label2id,
-            id2label,
-            ignore_mismatched_sizes=True,
-            trust_remote_code=True,
-            cache_dir="models/huggingface",
-        )
-        return model.config, processor, model
+        else:
+            logging.error(f"Model {model_config.arch} is not supported")
+            exit(1)
     elif model_config.arch in TORCHHUB_RGB_BASED_MODELS:
         if model_config.arch in ['swin3d_t', 'swin3d_s', 'swin3d_b']:
             config_class = Swin3DConfig
@@ -121,6 +150,9 @@ def load_rgb_model_for_training(
             config_class = MViTConfig
             processor_class = MViTImageProcessor
             model_class = MViTForVideoClassification
+        else:
+            logging.error(f"Model {model_config.arch} is not supported")
+            exit(1)
     else:
         logging.error(f"Model {model_config.arch} is not supported")
         exit(1)
@@ -143,13 +175,16 @@ def load_pose_model_for_training(
     label2id: dict = None,
     id2label: dict = None,
 ) -> tuple:
-    '''
-    '''
-    if exists_on_hf(model_config.pretrained):
+    """
+    Load or initialise a pose-based model for training.
+    If 'pretrained' is a local checkpoint directory, resume from it.
+    Otherwise initialise from scratch.
+    """
+    if _is_local_checkpoint(model_config.pretrained):
+        # Resume fine-tuning from a local checkpoint
         processor = FeatureExtractionMixin.from_pretrained(
             model_config.pretrained,
             trust_remote_code=True,
-            cache_dir="models/huggingface",
         )
         model = AutoModel.from_pretrained(
             model_config.pretrained,
@@ -157,10 +192,10 @@ def load_pose_model_for_training(
             id2label=id2label,
             ignore_mismatched_sizes=True,
             trust_remote_code=True,
-            cache_dir="models/huggingface",
         )
         return model.config, processor, model
-    elif model_config.arch in POSE_BASED_MODELS:
+
+    if model_config.arch in POSE_BASED_MODELS:
         if model_config.arch == "spoter":
             config_class = SPOTERConfig
             processor_class = SPOTERFeatureExtractor
@@ -173,6 +208,9 @@ def load_pose_model_for_training(
             config_class = DSTASLRConfig
             processor_class = DSTASLRFeatureExtractor
             model_class = DSTASLRForGraphClassification
+        else:
+            logging.error(f"Model {model_config.arch} is not supported")
+            exit(1)
     else:
         logging.error(f"Model {model_config.arch} is not supported")
         exit(1)
@@ -180,7 +218,7 @@ def load_pose_model_for_training(
     config_class.register_for_auto_class()
     processor_class.register_for_auto_class("AutoFeatureExtractor")
     model_class.register_for_auto_class("AutoModel")
-    logging.info(F"Registering {model_config.arch} classes")
+    logging.info(f"Registering {model_config.arch} classes")
 
     config = config_class(**vars(model_config))
     processor = processor_class(config=config)
@@ -268,8 +306,9 @@ def get_predictions(
     id2gloss: dict,
     k: int = 3,
 ) -> Predictions:
-    '''
+    """
     Get the top-k predictions.
+
     Parameters
     ----------
     inputs : torch.Tensor
@@ -280,15 +319,14 @@ def get_predictions(
         Mapping of class indices to glosses.
     k : int, optional
         Number of predictions to return, by default 3.
+
     Returns
     -------
-    tuple
-        List of top-k predictions and inference time.
-    '''
+    Predictions
+    """
     if inputs is None:
         return Predictions()
 
-    # Get logits
     start_time = time()
     if isinstance(model, ort.InferenceSession):
         inputs = inputs.cpu().numpy()
@@ -297,7 +335,6 @@ def get_predictions(
         logits = model(inputs.to(model.device)).logits
     inference_time = time() - start_time
 
-    # Get top-3 predictions
     topk_scores, topk_indices = torch.topk(logits, k, dim=1)
     topk_scores = torch.nn.functional.softmax(topk_scores, dim=1).squeeze().detach().numpy()
     topk_indices = topk_indices.squeeze().detach().numpy()
@@ -312,44 +349,22 @@ def get_predictions(
     return Predictions(predictions=predictions, inference_time=inference_time)
 
 
-def register_pipeline(model_config: ModelConfig) -> Pipeline:
-    '''
-    '''
-    _, processor, model = load_model(model_config)
-
-    if model_config.arch == "spoter":
-        PIPELINE_REGISTRY.register_pipeline(
-            "video-classification",
-            pipeline_class=SPOTERGraphClassificationPipeline,
-            pt_model=AutoModel,
-            type="multimodal",
-        )
-        return SPOTERGraphClassificationPipeline(
-            model=model,
-            feature_extractor=processor,
-        )
-
-    if model_config.arch in ["sl_gcn", "dsta_slr"]:
-        PIPELINE_REGISTRY.register_pipeline(
-            "video-classification",
-            pipeline_class=SLGCNGraphClassificationPipeline,
-            pt_model=AutoModel,
-            type="multimodal",
-        )
-        return SLGCNGraphClassificationPipeline(
-            model=model,
-            feature_extractor=processor,
-        )
-
-    raise NotImplementedError("Video classification pipeline requires pytorchvideo which is not installed.")
-
-
 def load_pipeline(
     model_config: ModelConfig,
     inference_config: InferenceConfig,
 ) -> Pipeline:
-    '''
-    '''
+    """
+    Load an inference pipeline from a local checkpoint.
+
+    Parameters
+    ----------
+    model_config : ModelConfig
+    inference_config : InferenceConfig
+
+    Returns
+    -------
+    Pipeline
+    """
     if model_config.arch in POSE_BASED_MODELS:
         _, processor, model = load_model(model_config)
 
@@ -367,14 +382,18 @@ def load_pipeline(
                 device=inference_config.device,
             )
 
+    if not _is_local_checkpoint(model_config.pretrained):
+        logging.error(
+            f"Checkpoint not found at '{model_config.pretrained}'. "
+            "Train the model first."
+        )
+        exit(1)
+
     return pipeline(
         "video-classification",
         model=model_config.pretrained,
         image_processor=model_config.pretrained,
         device=inference_config.device,
-        model_kwargs={
-            "cache_dir": inference_config.cache_dir,
-        },
         trust_remote_code=True,
         use_onnx=inference_config.use_onnx,
         top_k=inference_config.top_k,
@@ -386,19 +405,19 @@ def get_input_shape(
     processor: Union[ImageProcessingMixin, FeatureExtractionMixin],
     batch_size: int = 1,
 ) -> tuple:
-    '''
-    Get the input shape for the model.
+    """
+    Get the input shape for a given model architecture.
+
     Parameters
     ----------
+    arch : str
     processor : Union[ImageProcessingMixin, FeatureExtractionMixin]
-        Model processor.
     batch_size : int, optional
-        Batch size, by default 1.
+
     Returns
     -------
     tuple
-        Input shape.
-    '''
+    """
     if arch in RGB_BASED_MODELS:
         return (
             batch_size,

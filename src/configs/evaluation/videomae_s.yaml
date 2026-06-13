@@ -1,5 +1,5 @@
 data:
-  dataset: vsl_400
+  dataset: visl_400
   modality: rgb
   subset: cam_1
   data_dir: data/processed/vsl_400
@@ -14,17 +14,8 @@ data:
     sample_rate: 4
   fps: 30
   debug: False
-model:
+evaluation:
   arch: videomae
-  pretrained: MCG-NJU/videomae-small-finetuned-kinetics
-training:
-  run_name: videomae_s_v2.0
-  learning_rate: 0.00005
-  weight_decay: 0
-  num_train_epochs: 1
-  per_device_train_batch_size: 1
-  per_device_eval_batch_size: 1
-  metric_for_best_model: accuracy
-  # report_to: wandb
-  push_to_hub: True
-  hub_model_id: vsltranslation    # Only enter organization/account name
+  pretrained: experiments/videomae_s_v2.0
+  eval_set: test
+  batch_size: 4
