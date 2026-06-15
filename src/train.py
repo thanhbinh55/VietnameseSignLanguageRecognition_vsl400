@@ -97,6 +97,8 @@ def main(args: Namespace) -> None:
         if k in valid_fields:
             if k == "output_dir":
                 training_args_dict[k] = str(v)
+            elif k == "report_to" and v is None:
+                training_args_dict[k] = "none"
             else:
                 training_args_dict[k] = v
 
