@@ -9,7 +9,7 @@ class VISL400Dataset(BaseDataset):
         self,
         data_dir: str,
         subset: str,
-    ) -> Tuple[DatasetDict, dict, dict]:
+    ) -> Tuple[LocalDatasetDict, dict, dict]:
         data_dir = Path(data_dir)
         cams = subset.split("_")[1:]
         gloss2id_file = data_dir / "gloss.csv"
