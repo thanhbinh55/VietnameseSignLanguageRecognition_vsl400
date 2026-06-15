@@ -89,10 +89,21 @@ def main(args: Namespace) -> None:
 
     data_collator = pose_collate_fn
 
+    import dataclasses
+    from transformers import TrainingArguments
+    training_args_dict = {}
+    valid_fields = {f.name for f in dataclasses.fields(TrainingArguments)}
+    for k, v in vars(training_config).items():
+        if k in valid_fields:
+            if k == "output_dir":
+                training_args_dict[k] = str(v)
+            else:
+                training_args_dict[k] = v
+
     callbacks = [TrainingCallback()]
     trainer = Trainer(
         model=model,
-        args=TrainingArguments(**vars(training_config)),
+        args=TrainingArguments(**training_args_dict),
         train_dataset=train_dataset,
         eval_dataset=val_dataset,
         compute_metrics=compute_metrics,
