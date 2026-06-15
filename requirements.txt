@@ -10,7 +10,7 @@ scikit-learn
 wandb==0.17.4
 pose-format
 torchsummary
-mediapipe<0.10.30
+mediapipe
 opencv-python
 onnxruntime
 onnx
