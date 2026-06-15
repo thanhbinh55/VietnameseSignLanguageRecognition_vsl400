@@ -20,10 +20,6 @@ from models import (
     SPOTERConfig, SPOTERFeatureExtractor, SPOTERForGraphClassification,
     SLGCNConfig, SLGCNFeatureExtractor, SLGCNForGraphClassification,
 )
-from pipelines import (
-    SLGCNGraphClassificationPipeline,
-    SPOTERGraphClassificationPipeline,
-)
 
 
 def _is_local_checkpoint(path: str) -> bool:
@@ -318,6 +314,10 @@ def load_pipeline(
     -------
     Pipeline
     """
+    from pipelines import (
+        SLGCNGraphClassificationPipeline,
+        SPOTERGraphClassificationPipeline,
+    )
     if model_config.arch in POSE_BASED_MODELS:
         _, processor, model = load_model(model_config)
 

@@ -1,7 +1,6 @@
 import numpy as np
 from pathlib import Path
 from pose_format import Pose
-from pose_format.utils.holistic import load_holistic
 from typing import Dict, Any, Union
 
 
@@ -11,6 +10,7 @@ class PoseExtract:
             with open(inputs, "rb") as f:
                 pose = Pose.read(f.read())
         else:
+            from pose_format.utils.holistic import load_holistic
             pose = load_holistic(
                 frames=inputs["frames"],
                 fps=inputs["fps"],
