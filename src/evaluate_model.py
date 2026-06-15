@@ -13,7 +13,6 @@ from utils import (
 from tools import (
     load_model,
     load_dataset,
-    rgb_collate_fn,
     pose_collate_fn,
 )
 
@@ -49,7 +48,7 @@ def main(args: Namespace) -> None:
         remove_unused_columns=False,
         per_device_eval_batch_size=eval_config.batch_size,
     )
-    data_collator = rgb_collate_fn if data_config.modality == "rgb" else pose_collate_fn
+    data_collator = pose_collate_fn
     callbacks = [TrainingCallback()]
     trainer = Trainer(
         model=model,

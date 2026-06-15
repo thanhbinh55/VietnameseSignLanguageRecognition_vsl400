@@ -1,8 +1,7 @@
 from pathlib import Path
 from typing import Tuple
-from datasets import DatasetDict, Dataset
-from .base_dataset import BaseDataset
-from .hf_builders import load_visl_400
+from .base_dataset import BaseDataset, LocalDatasetDict, LocalDataset
+from .visl_400 import load_visl_400
 
 
 class VISL400Dataset(BaseDataset):
@@ -38,10 +37,10 @@ class VISL400Dataset(BaseDataset):
             ].reset_index(drop=True)
         id2gloss = {v: k for k, v in gloss2id.items()}
 
-        dataset = DatasetDict({
-            "train": Dataset.from_pandas(train_df),
-            "validation": Dataset.from_pandas(val_df),
-            "test": Dataset.from_pandas(test_df),
+        dataset = LocalDatasetDict({
+            "train": LocalDataset(train_df.to_dict('records')),
+            "validation": LocalDataset(val_df.to_dict('records')),
+            "test": LocalDataset(test_df.to_dict('records')),
         })
 
         return dataset, gloss2id, id2gloss

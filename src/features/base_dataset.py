@@ -2,11 +2,49 @@ import pandas as pd
 from typing import Union
 from pathlib import Path
 from configs import DataConfig
-from datasets import DatasetDict
-from .utils import get_rgb_transforms, get_pose_transforms
-from transformers import ImageProcessingMixin, FeatureExtractionMixin
-from pytorchvideo.data import LabeledVideoDataset, make_clip_sampler
+from .utils import get_pose_transforms
+from transformers import FeatureExtractionMixin
 from .pose_dataset import PoseDataset
+import random
+
+
+class LocalDataset:
+    def __init__(self, data: list):
+        self.data = data
+
+    def select_columns(self, columns: list):
+        new_data = []
+        for row in self.data:
+            new_row = {col: row[col] for col in columns if col in row}
+            new_data.append(new_row)
+        return LocalDataset(new_data)
+
+    def shuffle(self, seed=42):
+        new_data = list(self.data)
+        random.Random(seed).shuffle(new_data)
+        return LocalDataset(new_data)
+
+    def take(self, n: int):
+        return LocalDataset(self.data[:n])
+
+    def __getitem__(self, idx):
+        return self.data[idx]
+
+    def __len__(self):
+        return len(self.data)
+
+    def __iter__(self):
+        return iter(self.data)
+
+
+class LocalDatasetDict(dict):
+    def select_columns(self, columns: list):
+        return LocalDatasetDict({k: v.select_columns(columns) for k, v in self.items()})
+
+    def shuffle(self, seed=42):
+        return LocalDatasetDict({k: v.shuffle(seed) for k, v in self.items()})
+
+
 
 
 class BaseDataset:
@@ -38,34 +76,9 @@ class BaseDataset:
     def get_split(
         self,
         split: str,
-        processor: Union[ImageProcessingMixin, FeatureExtractionMixin],
-    ) -> LabeledVideoDataset:
-        if self.data_config.modality == "rgb":
-            return self.__get_rgb_split(split, processor)
+        processor: FeatureExtractionMixin,
+    ) -> PoseDataset:
         return self.__get_pose_split(split, processor)
-
-    def __get_rgb_split(
-        self,
-        split: str,
-        processor: ImageProcessingMixin,
-    ) -> LabeledVideoDataset:
-        transform, clip_sampler_type = get_rgb_transforms(split, processor, self.data_config.transform)
-
-        labeled_video_paths = [
-            (sample["video"], {'label': sample["gloss_id"]})
-            for sample in self.dataset[split]
-        ]
-
-        sample_rate = self.data_config.transform.sample_rate
-        fps = self.data_config.fps
-        clip_duration = processor.num_frames * sample_rate / fps
-
-        return LabeledVideoDataset(
-            labeled_video_paths=labeled_video_paths,
-            clip_sampler=make_clip_sampler(clip_sampler_type, clip_duration),
-            transform=transform,
-            decode_audio=False,
-        )
 
     def __get_pose_split(
         self,

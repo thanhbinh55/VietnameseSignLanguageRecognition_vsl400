@@ -16,7 +16,6 @@ from utils import (
 from tools import (
     load_model,
     load_dataset,
-    rgb_collate_fn,
     pose_collate_fn
 )
 
@@ -88,14 +87,7 @@ def main(args: Namespace) -> None:
     logging.info(f"Number of samples in validation set: {val_dataset.num_videos}")
     logging.info(f"Number of samples in test set: {test_dataset.num_videos}")
 
-    if data_config.modality == "rgb":
-        training_samples = train_dataset.num_videos
-        batch_size = training_config.per_device_train_batch_size
-        num_epochs = training_config.num_train_epochs
-        training_config.max_steps = (training_samples // batch_size) * num_epochs
-        data_collator = rgb_collate_fn
-    else:
-        data_collator = pose_collate_fn
+    data_collator = pose_collate_fn
 
     callbacks = [TrainingCallback()]
     trainer = Trainer(

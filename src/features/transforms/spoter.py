@@ -2,11 +2,22 @@ import torch
 import logging
 import numpy as np
 from pose_format import Pose
-from utils import BODY_LANDMARKS, HAND_LANDMARKS, LANDMARKS
+from utils import BODY_LANDMARKS, HAND_LANDMARKS, LANDMARKS, HANDS_LANDMARKS
+
+
+def get_spoter_landmarks(num_landmarks: int) -> list:
+    if num_landmarks == 54:
+        return LANDMARKS
+    elif num_landmarks == 74:
+        face_names = [f"face_{i}" for i in range(20)]
+        return BODY_LANDMARKS + face_names + HANDS_LANDMARKS
+    else:
+        return LANDMARKS
 
 
 class SPOTERJointSelect:
-    def __init__(self) -> None:
+    def __init__(self, include_face: bool = False) -> None:
+        self.include_face = include_face
         self.pose_landmarks = [
             "NOSE",
             "NECK",
@@ -20,6 +31,11 @@ class SPOTERJointSelect:
             "LEFT_ELBOW",
             "RIGHT_WRIST",
             "LEFT_WRIST",
+        ]
+        self.face_landmarks = [
+            "70", "105", "336", "334",  # Eyebrows
+            "33", "133", "159", "145", "362", "263", "386", "374",  # Eyes
+            "61", "291", "0", "17", "13", "14", "37", "267"  # Mouth corners
         ]
         self.hand_landmarks = [
             "WRIST",
@@ -55,6 +71,9 @@ class SPOTERJointSelect:
         data = []
         for point in self.pose_landmarks:
             data.append(self.__get_point("POSE_LANDMARKS", point, pose))
+        if self.include_face:
+            for point in self.face_landmarks:
+                data.append(self.__get_point("FACE_LANDMARKS", point, pose))
         for side in ["LEFT", "RIGHT"]:
             for point in self.hand_landmarks:
                 data.append(self.__get_point(f"{side}_HAND_LANDMARKS", point, pose))
@@ -90,36 +109,46 @@ class SPOTERShift:
 
 
 class SPOTERTensorToDict:
-    def __call__(self, data: np.ndarray) -> dict:
+    def __call__(self, data: torch.Tensor) -> dict:
         """
         Converts the tensor representation of the pose data into a dictionary.
 
-        :param data: np.ndarray containing the pose data
+        :param data: np.ndarray/Tensor containing the pose data
         :return: Dictionary with the pose data
         """
-        data_array = data.numpy()
+        data_array = data.numpy() if isinstance(data, torch.Tensor) else data
         output = {}
-        for idx, landmark in enumerate(LANDMARKS):
+        landmarks_list = get_spoter_landmarks(data_array.shape[1])
+        for idx, landmark in enumerate(landmarks_list):
             output[landmark] = data_array[:, idx]
         return output
 
 
 class SPOTERDictToTensor:
-    def __call__(self, data: dict) -> np.ndarray:
+    def __call__(self, data: dict) -> torch.Tensor:
         """
         Converts the dictionary representation of the pose data into a tensor.
 
         :param data: Dictionary containing the pose data
-        :return: np.ndarray with the pose data
+        :return: Tensor with the pose data
         """
-        output = np.empty((len(data["leftEar"]), len(LANDMARKS), 2))
-        for idx, landmark in enumerate(LANDMARKS):
+        if "face_0" in data:
+            landmarks_list = get_spoter_landmarks(74)
+        else:
+            landmarks_list = get_spoter_landmarks(54)
+            
+        first_key = landmarks_list[0]
+        output = np.empty((len(data[first_key]), len(landmarks_list), 2))
+        for idx, landmark in enumerate(landmarks_list):
             output[:, idx, 0] = [frame[0] for frame in data[landmark]]
             output[:, idx, 1] = [frame[1] for frame in data[landmark]]
         return torch.from_numpy(output)
 
 
 class SPOTERSingleBodyDictNormalize:
+    def __init__(self, anchor: str = "box") -> None:
+        self.anchor = anchor
+
     def __call__(self, row: dict) -> dict:
         """
         Normalizes the skeletal data for a given sequence of frames with signer's body pose data. The normalization follows
@@ -134,35 +163,40 @@ class SPOTERSingleBodyDictNormalize:
         original_row = row
 
         last_starting_point, last_ending_point = None, None
+        last_anchor_point, last_head_metric = None, None
 
         # Treat each element of the sequence (analyzed frame) individually
         for sequence_index in range(sequence_size):
+            has_shoulders = (
+                row["leftShoulder"][sequence_index][0] != 0
+                and row["rightShoulder"][sequence_index][0] != 0
+            )
+            has_neck_nose = (
+                row["neck"][sequence_index][0] != 0
+                and row["nose"][sequence_index][0] != 0
+            )
+            
+            anchor_missing = False
+            if self.anchor == "neck" and row["neck"][sequence_index][0] == 0:
+                anchor_missing = True
+            elif self.anchor == "nose" and row["nose"][sequence_index][0] == 0:
+                anchor_missing = True
+
             # Prevent from even starting the analysis if some necessary elements are not present
-            if (
-                row["leftShoulder"][sequence_index][0] == 0
-                or row["rightShoulder"][sequence_index][0] == 0
-            ) and (
-                row["neck"][sequence_index][0] == 0 or row["nose"][sequence_index][0] == 0
-            ):
-                if not last_starting_point:
+            if (not has_shoulders and not has_neck_nose) or anchor_missing:
+                if self.anchor == "box" and not last_starting_point:
                     valid_sequence = False
                     continue
-
+                elif self.anchor != "box" and not last_anchor_point:
+                    valid_sequence = False
+                    continue
                 else:
-                    starting_point, ending_point = last_starting_point, last_ending_point
+                    if self.anchor == "box":
+                        starting_point, ending_point = last_starting_point, last_ending_point
+                    else:
+                        anchor_point, head_metric = last_anchor_point, last_head_metric
 
             else:
-
-                # NOTE:
-                #
-                # While in the paper, it is written that the head metric is calculated by halving the shoulder distance,
-                # this is meant for the distance between the very ends of one's shoulder, as literature studying body
-                # metrics and ratios generally states. The Vision Pose Estimation API, however, seems to be predicting
-                # rather the center of one's shoulder. Based on our experiments and manual reviews of the data, employing
-                # this as just the plain shoulder distance seems to be more corresponding to the desired metric.
-                #
-                # Please, review this if using other third-party pose estimation libraries.
-
                 if (
                     row["leftShoulder"][sequence_index][0] != 0
                     and row["rightShoulder"][sequence_index][0] != 0
@@ -188,54 +222,71 @@ class SPOTERSingleBodyDictNormalize:
                     ) ** 0.5
                     head_metric = neck_nose_distance
 
-                # Set the starting and ending point of the normalization bounding box
-                # starting_point = [row["neck"][sequence_index][0] - 3 * head_metric,
-                #                  row["leftEye"][sequence_index][1] + (head_metric / 2)]
-                starting_point = [
-                    row["neck"][sequence_index][0] - 3 * head_metric,
-                    row["leftEye"][sequence_index][1] + head_metric,
-                ]
-                ending_point = [
-                    row["neck"][sequence_index][0] + 3 * head_metric,
-                    starting_point[1] - 6 * head_metric,
-                ]
+                if self.anchor == "box":
+                    # Set the starting and ending point of the normalization bounding box
+                    starting_point = [
+                        row["neck"][sequence_index][0] - 3 * head_metric,
+                        row["leftEye"][sequence_index][1] + head_metric,
+                    ]
+                    ending_point = [
+                        row["neck"][sequence_index][0] + 3 * head_metric,
+                        starting_point[1] - 6 * head_metric,
+                    ]
+                    last_starting_point, last_ending_point = starting_point, ending_point
+                else:
+                    if self.anchor == "neck":
+                        anchor_point = [row["neck"][sequence_index][0], row["neck"][sequence_index][1]]
+                    elif self.anchor == "nose":
+                        anchor_point = [row["nose"][sequence_index][0], row["nose"][sequence_index][1]]
+                    last_anchor_point, last_head_metric = anchor_point, head_metric
 
-                last_starting_point, last_ending_point = starting_point, ending_point
-
-            # Ensure that all of the bounding-box-defining coordinates are not out of the picture
-            if starting_point[0] < 0:
-                starting_point[0] = 0
-            if starting_point[1] < 0:
-                starting_point[1] = 0
-            if ending_point[0] < 0:
-                ending_point[0] = 0
-            if ending_point[1] < 0:
-                ending_point[1] = 0
+            if self.anchor == "box":
+                # Ensure that all of the bounding-box-defining coordinates are not out of the picture
+                if starting_point[0] < 0:
+                    starting_point[0] = 0
+                if starting_point[1] < 0:
+                    starting_point[1] = 0
+                if ending_point[0] < 0:
+                    ending_point[0] = 0
+                if ending_point[1] < 0:
+                    ending_point[1] = 0
 
             # Normalize individual landmarks and save the results
-            for identifier in BODY_LANDMARKS:
+            keys_to_normalize = list(BODY_LANDMARKS)
+            if "face_0" in row:
+                keys_to_normalize.extend([f"face_{i}" for i in range(20)])
+
+            for identifier in keys_to_normalize:
                 key = identifier
 
                 # Prevent from trying to normalize incorrectly captured points
                 if row[key][sequence_index][0] == 0:
                     continue
 
-                if any(
-                    [
-                        (ending_point[0] - starting_point[0]) == 0,
-                        (starting_point[1] - ending_point[1]) == 0,
-                    ]
-                ):
-                    logging.info(f"Problematic normalization with {key}")
-                    valid_sequence = False
-                    break
+                if self.anchor == "box":
+                    if any(
+                        [
+                            (ending_point[0] - starting_point[0]) == 0,
+                            (starting_point[1] - ending_point[1]) == 0,
+                        ]
+                    ):
+                        logging.info(f"Problematic normalization with {key}")
+                        valid_sequence = False
+                        break
 
-                normalized_x = (row[key][sequence_index][0] - starting_point[0]) / (
-                    ending_point[0] - starting_point[0]
-                )
-                normalized_y = (row[key][sequence_index][1] - ending_point[1]) / (
-                    starting_point[1] - ending_point[1]
-                )
+                    normalized_x = (row[key][sequence_index][0] - starting_point[0]) / (
+                        ending_point[0] - starting_point[0]
+                    )
+                    normalized_y = (row[key][sequence_index][1] - ending_point[1]) / (
+                        starting_point[1] - ending_point[1]
+                    )
+                else:
+                    if head_metric == 0:
+                        logging.info(f"Problematic normalization with {key}")
+                        valid_sequence = False
+                        break
+                    normalized_x = (row[key][sequence_index][0] - anchor_point[0]) / head_metric
+                    normalized_y = (row[key][sequence_index][1] - anchor_point[1]) / head_metric
 
                 row[key][sequence_index] = list(row[key][sequence_index])
 
@@ -275,68 +326,28 @@ class SPOTERSingleHandDictNormalize:
 
             sequence_size = len(row["wrist_" + str(hand_index)])
 
+            wrist_key = "wrist_" + str(hand_index)
+
             # Treat each element of the sequence (analyzed frame) individually
             for sequence_index in range(sequence_size):
 
-                # Retrieve all of the X and Y values of the current frame
-                landmarks_x_values = [
-                    row[key][sequence_index][0]
-                    for key in hand_landmarks[hand_index]
-                    if row[key][sequence_index][0] != 0
-                ]
-                landmarks_y_values = [
-                    row[key][sequence_index][1]
-                    for key in hand_landmarks[hand_index]
-                    if row[key][sequence_index][1] != 0
-                ]
-
-                # Prevent from even starting the analysis if some necessary elements are not present
-                if not landmarks_x_values or not landmarks_y_values:
+                # Prevent from trying to normalize if wrist is not captured
+                if row[wrist_key][sequence_index][0] == 0:
                     continue
 
-                # Calculate the deltas
-                width, height = max(landmarks_x_values) - min(landmarks_x_values), max(
-                    landmarks_y_values
-                ) - min(landmarks_y_values)
-                if width > height:
-                    delta_x = 0.1 * width
-                    delta_y = delta_x + ((width - height) / 2)
-                else:
-                    delta_y = 0.1 * height
-                    delta_x = delta_y + ((height - width) / 2)
+                wrist_x = row[wrist_key][sequence_index][0]
+                wrist_y = row[wrist_key][sequence_index][1]
 
-                # Set the starting and ending point of the normalization bounding box
-                starting_point = (
-                    min(landmarks_x_values) - delta_x,
-                    min(landmarks_y_values) - delta_y,
-                )
-                ending_point = (
-                    max(landmarks_x_values) + delta_x,
-                    max(landmarks_y_values) + delta_y,
-                )
-
-                # Normalize individual landmarks and save the results
+                # Normalize individual landmarks by shifting relative to wrist
                 for identifier in HAND_LANDMARKS:
                     key = identifier + "_" + str(hand_index)
 
                     # Prevent from trying to normalize incorrectly captured points
-                    if (
-                        row[key][sequence_index][0] == 0
-                        or (ending_point[0] - starting_point[0]) == 0
-                        or (starting_point[1] - ending_point[1]) == 0
-                    ):
+                    if row[key][sequence_index][0] == 0:
                         continue
 
-                    normalized_x = (row[key][sequence_index][0] - starting_point[0]) / (
-                        ending_point[0] - starting_point[0]
-                    )
-                    normalized_y = (row[key][sequence_index][1] - starting_point[1]) / (
-                        ending_point[1] - starting_point[1]
-                    )
-
                     row[key][sequence_index] = list(row[key][sequence_index])
-
-                    row[key][sequence_index][0] = normalized_x
-                    row[key][sequence_index][1] = normalized_y
+                    row[key][sequence_index][0] -= wrist_x
+                    row[key][sequence_index][1] -= wrist_y
 
         return row

@@ -1,5 +1,6 @@
+import numpy as np
+import torch
 from typing import Any
-from datasets import Dataset as HFDataset
 from torchvision.transforms.v2 import Compose
 from torch.utils.data import Dataset as TorchDataset
 
@@ -7,7 +8,7 @@ from torch.utils.data import Dataset as TorchDataset
 class PoseDataset(TorchDataset):
     def __init__(
         self,
-        dataset: HFDataset,
+        dataset: list,
         transforms: Compose,
     ) -> None:
         self.dataset = dataset
@@ -16,7 +17,11 @@ class PoseDataset(TorchDataset):
 
     def __getitem__(self, index) -> Any:
         sample = self.dataset[index]
-        data = self.transforms(sample["pose"])
+        path = sample["pose"]
+        if isinstance(path, str) and path.endswith(".npy"):
+            data = torch.from_numpy(np.load(path)).float()
+        else:
+            data = self.transforms(path)
         label = int(sample["gloss_id"])
         return {"pose": data, "label": label}
 

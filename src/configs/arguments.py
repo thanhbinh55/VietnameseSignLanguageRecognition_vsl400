@@ -56,19 +56,6 @@ class ProcessRecordedVideosArguments():
 
 @dataclass
 class TransformConfig:
-    # RGB specific
-    horizontal_flip_prob: float = 0.5
-    aug_type: str = "augmix"
-    aug_paras: dict = field(
-        default_factory=lambda: {
-            "magnitude": 3,
-            "alpha": 1.0,
-            "width": 5,
-            "depth": -1,
-        }
-    )
-    sample_rate: int = 4
-
     # Pose specific
     aug_prob: float = 0.5
 
@@ -82,15 +69,21 @@ class TransformConfig:
     gaussian_noise_mean: float = 0.0
     gaussian_noise_std: float = 0.001
 
+    # Ablation parameters
+    interpolate: bool = False
+    anchor: str = "box"
+    include_face: bool = False
+    active_augs: list = field(default_factory=lambda: [0, 1, 2, 3])
+
     def __post_init__(self):
-        assert self.aug_type in ["augmix", "mixup"], \
-            "Only AugMix and MixUp are supported for now"
+        assert self.anchor in ["box", "neck", "nose"], \
+            "Only 'box', 'neck', and 'nose' anchors are supported for now"
 
 
 @dataclass
 class DataConfig:
     dataset: str = "vsl"
-    modality: str = "rgb"
+    modality: str = "pose"
     subset: str = None
     data_dir: str = "data/processed/vsl"
     transform: Any = None
@@ -99,15 +92,15 @@ class DataConfig:
     transform: TransformConfig = TransformConfig()
 
     def __post_init__(self):
-        assert self.dataset in ["visl_98", "visl_400"], \
-            "Only VSL dataset is supported for now"
-        assert self.modality in ["rgb", "pose"], \
-            "Only RGB and Pose modalities are supported for now"
+        assert self.dataset == "visl_400", \
+            "Only VISL-400 dataset is supported for now"
+        assert self.modality == "pose", \
+            "Only Pose modality is supported now"
 
 
 @dataclass
 class ModelConfig:
-    arch: str = "swin3d_t"
+    arch: str = "spoter"
     pretrained: str = "DEFAULT"
     num_frozen_layers: int = 0
     ignored_weights: list = field(default_factory=lambda: [])

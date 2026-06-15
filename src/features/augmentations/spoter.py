@@ -53,6 +53,14 @@ class SPOTERAugment:
             output[:, landmark_index, 1] = np.array(landmarks_dict[identifier])[:, 1]
         return output
 
+    def landmarks_to_numpy(self, landmarks_dict: dict, keys: list) -> np.ndarray:
+        T = len(landmarks_dict[keys[0]])
+        output = np.empty(shape=(T, len(keys), 2))
+        for idx, key in enumerate(keys):
+            output[:, idx, 0] = np.array(landmarks_dict[key])[:, 0]
+            output[:, idx, 1] = np.array(landmarks_dict[key])[:, 1]
+        return output
+
     def preprocess_row_sign(self, sign: dict) -> tuple:
         """
         Supplementary method splitting the single-dictionary skeletal data into two dictionaries of body and hand landmarks
@@ -98,21 +106,31 @@ class SPOTERAugment:
             output[identifier] = data[:, landmark_index].tolist()
         return output
 
+    def numpy_to_landmarks_dict(self, data: np.ndarray, keys: list) -> dict:
+        output = {}
+        for idx, key in enumerate(keys):
+            output[key] = data[:, idx].tolist()
+        return output
+
 
 class SPOTERRandomAugment:
-    def __init__(self, p: float) -> None:
+    def __init__(self, p: float, active_augs: list = None) -> None:
         self.p = p
-        self.augs = {
+        all_augs = {
             0: SPOTERRotate((-13, 13)),
             1: SPOTERShear("squeeze", (0, 0.15)),
             2: SPOTERArmJointRotate(0.3, (-4, 4)),
-            # 3: SPOTERShear("perspective", (0, 0.1)),
+            3: SPOTERShear("perspective", (0, 0.1)),
         }
+        if active_augs is not None:
+            self.augs = {i: all_augs[i] for i in active_augs if i in all_augs}
+        else:
+            self.augs = all_augs
 
     def __call__(self, data: dict) -> dict:
-        if random.random() < self.p:
-            selected_aug = random.randrange(len(self.augs))
-            data = self.augs[selected_aug](data)
+        if random.random() < self.p and len(self.augs) > 0:
+            selected_key = random.choice(list(self.augs.keys()))
+            data = self.augs[selected_key](data)
         return data
 
 
@@ -202,21 +220,30 @@ class SPOTERShear(SPOTERAugment):
             logging.error("Unsupported shear type provided.")
             return {}
 
-        landmarks_array = self.dict_to_numpy(body_landmarks)
-        augmented_landmarks = cv2.perspectiveTransform(np.array(landmarks_array, dtype=np.float32), mtx)
+        body_keys = BODY_LANDMARKS
+        body_array = self.landmarks_to_numpy(body_landmarks, body_keys)
+        
+        hand_keys = HANDS_LANDMARKS
+        hand_array = self.landmarks_to_numpy(hand_landmarks, hand_keys)
 
         augmented_zero_landmark = cv2.perspectiveTransform(
             np.array([[[0, 0]]], dtype=np.float32),
             mtx
         )[0][0]
-        augmented_landmarks = np.stack(
-            [
-                np.where(sub == augmented_zero_landmark, [0, 0], sub)
-                for sub in augmented_landmarks
-            ]
-        )
+        
+        augmented_body = cv2.perspectiveTransform(np.array(body_array, dtype=np.float32), mtx)
+        augmented_hand = cv2.perspectiveTransform(np.array(hand_array, dtype=np.float32), mtx)
 
-        body_landmarks = self.numpy_to_dict(augmented_landmarks)
+        for t in range(augmented_body.shape[0]):
+            is_zero = np.all(augmented_body[t] == augmented_zero_landmark, axis=-1, keepdims=True)
+            augmented_body[t] = np.where(is_zero, [0.0, 0.0], augmented_body[t])
+            
+        for t in range(augmented_hand.shape[0]):
+            is_zero = np.all(augmented_hand[t] == augmented_zero_landmark, axis=-1, keepdims=True)
+            augmented_hand[t] = np.where(is_zero, [0.0, 0.0], augmented_hand[t])
+
+        body_landmarks = self.numpy_to_landmarks_dict(augmented_body, body_keys)
+        hand_landmarks = self.numpy_to_landmarks_dict(augmented_hand, hand_keys)
 
         return self.wrap_sign_into_row(body_landmarks, hand_landmarks)
 

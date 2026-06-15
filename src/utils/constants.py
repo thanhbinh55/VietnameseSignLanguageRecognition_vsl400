@@ -3,29 +3,13 @@ import numpy as np
 
 VIDEO_EXTENSIONS = (".mp4", ".avi", ".mov", ".mkv")
 
-TORCHHUB_RGB_BASED_MODELS = (
-    'swin3d_t',
-    'swin3d_s',
-    'swin3d_b',
-    "r3d_18",
-    "mc3_18",
-    "r2plus1d_18",
-    "s3d",
-    "mvit_v1_b",
-    "mvit_v2_s",
-)
-HUGGINGFACE_RGB_BASED_MODELS = (
-    "videomae",
-)
-RGB_BASED_MODELS = HUGGINGFACE_RGB_BASED_MODELS + TORCHHUB_RGB_BASED_MODELS
-
 POSE_BASED_MODELS = (
     "spoter",
     "sl_gcn",
     "dsta_slr"
 )
 
-MODELS = RGB_BASED_MODELS + POSE_BASED_MODELS
+MODELS = POSE_BASED_MODELS
 
 HAND_LANDMARKS = [
     "wrist",

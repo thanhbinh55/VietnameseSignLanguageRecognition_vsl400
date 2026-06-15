@@ -1,0 +1,45 @@
+data:
+  dataset: visl_400
+  modality: pose
+  subset: cam_1
+  data_dir: data/processed/vsl_400
+  transform:
+    aug_prob: 0.5
+    rotation_std: 0.2
+    shear_std: 0.2
+    scale_std: 0.2
+    interpolate: true
+    anchor: box
+    include_face: false
+  fps: 25
+  debug: false
+model:
+  arch: sl_gcn
+  num_points: 27
+  groups: 8
+  block_size: 41
+  in_channels: 3
+  num_frozen_layers: 0
+  num_frames: 150
+training:
+  output_dir: experiments/ablation/run_17
+  run_name: run_17
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  warmup_ratio: 0.05
+  lr_scheduler_type: cosine
+  num_train_epochs: 100
+  per_device_train_batch_size: 32
+  per_device_eval_batch_size: 64
+  gradient_accumulation_steps: 1
+  dataloader_num_workers: 2
+  dataloader_pin_memory: false
+  dataloader_persistent_workers: true
+  save_total_limit: 1
+  save_safetensors: true
+  fp16: false
+  bf16: false
+  use_cpu: false
+  use_mps_device: true
+  metric_for_best_model: accuracy
+  report_to: null

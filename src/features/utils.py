@@ -1,5 +1,5 @@
 from configs import TransformConfig
-from transformers import ImageProcessingMixin, FeatureExtractionMixin
+from transformers import FeatureExtractionMixin
 from torchvision.transforms.v2 import (
     Compose,
     Resize,
@@ -25,78 +25,10 @@ from .transforms import (
     SLGCNMotionStream,
     NumPyToTensor,
     PoseExtract,
+    PoseInterpolate,
 )
 
 
-def get_rgb_transforms(
-    split: str,
-    processor: ImageProcessingMixin,
-    transform_config: TransformConfig,
-) -> Compose:
-    from pytorchvideo.transforms import (
-        ApplyTransformToKey,
-        Normalize,
-        UniformTemporalSubsample,
-        create_video_transform,
-        Div255,
-    )
-    num_frames = processor.num_frames
-    mean = processor.mean
-    std = processor.std
-    max_resize_size = processor.max_resize_size
-    min_resize_size = processor.min_resize_size
-    crop_size = (processor.size["height"], processor.size["width"])
-    horizontal_flip_prob = transform_config.horizontal_flip_prob
-    aug_type = transform_config.aug_type
-    aug_paras = transform_config.aug_paras
-
-    if split == "train":
-        transform = Compose(
-            [
-                ApplyTransformToKey(
-                    key="video",
-                    transform=Compose(
-                        [
-                            Div255(),
-                            create_video_transform(
-                                mode="train",
-                                num_samples=num_frames,
-                                convert_to_float=False,
-                                video_mean=mean,
-                                video_std=std,
-                                max_size=max_resize_size,
-                                min_size=min_resize_size,
-                                crop_size=crop_size,
-                                horizontal_flip_prob=horizontal_flip_prob,
-                                aug_type=aug_type,
-                                aug_paras=aug_paras
-                            )
-                        ]
-                    ),
-                ),
-            ]
-        )
-        clip_sampler_type = "random"
-    else:
-        transform = Compose(
-            [
-                ApplyTransformToKey(
-                    key="video",
-                    transform=Compose(
-                        [
-                            UniformTemporalSubsample(num_frames),
-                            Div255(),
-                            Normalize(mean, std),
-                            Resize(min_resize_size),
-                            CenterCrop(crop_size),
-                        ]
-                    ),
-                ),
-            ]
-        )
-        clip_sampler_type = "uniform"
-
-    return transform, clip_sampler_type
 
 
 def get_pose_transforms(
@@ -116,17 +48,27 @@ def _get_spoter_transforms(
     processor: FeatureExtractionMixin,
     transform_config: TransformConfig,
 ) -> Compose:
-    transforms = [
+    transforms = []
+    
+    if transform_config.interpolate:
+        transforms.append(PoseInterpolate())
+        
+    transforms.extend([
         PoseExtract(),
-        SPOTERJointSelect(),
+        SPOTERJointSelect(include_face=transform_config.include_face),
         SPOTERTensorToDict(),
-    ]
+    ])
 
     if split == "train" and transform_config.aug_prob > 0:
-        transforms.append(SPOTERRandomAugment(transform_config.aug_prob))
+        transforms.append(
+            SPOTERRandomAugment(
+                transform_config.aug_prob,
+                active_augs=transform_config.active_augs
+            )
+        )
 
     transforms.extend([
-        SPOTERSingleBodyDictNormalize(),
+        SPOTERSingleBodyDictNormalize(anchor=transform_config.anchor),
         SPOTERSingleHandDictNormalize(),
         SPOTERDictToTensor(),
         SPOTERPad(processor.num_frames),

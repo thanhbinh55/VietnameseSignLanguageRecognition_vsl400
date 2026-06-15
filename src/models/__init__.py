@@ -18,11 +18,11 @@
 #     MViTImageProcessor,
 #     MViTForVideoClassification
 # )
-# from .sl_gcn import (
-#     SLGCNConfig,
-#     SLGCNFeatureExtractor,
-#     SLGCNForGraphClassification
-# )
+from .sl_gcn import (
+    SLGCNConfig,
+    SLGCNFeatureExtractor,
+    SLGCNForGraphClassification
+)
 from .spoter import (
     SPOTERConfig,
     SPOTERFeatureExtractor,
