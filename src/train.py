@@ -100,17 +100,26 @@ def main(args: Namespace) -> None:
             else:
                 training_args_dict[k] = v
 
+    import inspect
     callbacks = [TrainingCallback()]
-    trainer = Trainer(
-        model=model,
-        args=TrainingArguments(**training_args_dict),
-        train_dataset=train_dataset,
-        eval_dataset=val_dataset,
-        compute_metrics=compute_metrics,
-        data_collator=data_collator,
-        callbacks=callbacks,
-        tokenizer=processor,
-    )
+    
+    trainer_kwargs = {
+        "model": model,
+        "args": TrainingArguments(**training_args_dict),
+        "train_dataset": train_dataset,
+        "eval_dataset": val_dataset,
+        "compute_metrics": compute_metrics,
+        "data_collator": data_collator,
+        "callbacks": callbacks,
+    }
+    
+    trainer_sig = inspect.signature(Trainer.__init__)
+    if "processing_class" in trainer_sig.parameters:
+        trainer_kwargs["processing_class"] = processor
+    elif "tokenizer" in trainer_sig.parameters:
+        trainer_kwargs["tokenizer"] = processor
+
+    trainer = Trainer(**trainer_kwargs)
     logging.info("Trainer created")
 
     try:
