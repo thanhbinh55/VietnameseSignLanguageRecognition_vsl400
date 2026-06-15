@@ -86,10 +86,9 @@ class DataConfig:
     modality: str = "pose"
     subset: str = None
     data_dir: str = "data/processed/vsl"
-    transform: Any = None
     fps: int = 30
     debug: bool = False
-    transform: TransformConfig = TransformConfig()
+    transform: TransformConfig = field(default_factory=TransformConfig)
 
     def __post_init__(self):
         assert self.dataset == "visl_400", \
