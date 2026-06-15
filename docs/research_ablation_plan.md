@@ -31,15 +31,32 @@ Dự án đã được đồng bộ hóa và làm sạch trong tệp [architectu
 ---
 
 ## 3. Khung Thiết kế Thực nghiệm (Greedy Ablation Study Design)
-Để tránh bùng nổ tổ hợp phép thử (160 runs $\approx$ 40 ngày chạy), chúng ta áp dụng mô hình thực nghiệm tiệm tiến (Greedy) gồm 17 runs trên mô hình SPOTER (sau đó xác thực chéo trên SL-GCN):
+Để tránh bùng nổ tổ hợp phép thử (160 runs $\approx$ 40 ngày chạy), chúng ta áp dụng mô hình thực nghiệm tiệm tiến (Greedy) gồm 19 runs trên mô hình SPOTER (sau đó xác thực chéo trên SL-GCN):
 
 ```mermaid
 flowchart TD
-    E1["Thực nghiệm 1: TBL Preprocessing\n(Tìm θ và τb tối ưu nhất)"] --> E2["Thực nghiệm 2: Keypoint Interpolation\n(So sánh Có vs Không nội suy)"]
+    E0["Thực nghiệm 0: Raw Baseline\n(Không TBL, không nội suy, không Aug)"] --> E1["Thực nghiệm 1: TBL Preprocessing\n(Tìm θ và τb tối ưu nhất)"]
+    E1 --> E2["Thực nghiệm 2: Keypoint Interpolation\n(So sánh Có vs Không nội suy)"]
     E2 --> E3["Thực nghiệm 3: Anchor Normalization\n(Bbox vai vs. Neck-centered vs. Nose-centered)"]
-    E3 --> E4["Thực nghiệm 4: Augmentation Ablation\n(No-Aug -> +Spatial -> +Perspective -> +Kinematic -> +Noise)"]
+    E3 --> E4["Thực nghiệm 4: Augmentation Ablation\n(Pha 1: Độc lập | Pha 2: Cộng dồn)"]
     E4 --> E5["Thực nghiệm 5: Cross-Model Validation\n(Áp dụng toàn bộ pipeline tối ưu lên SL-GCN)"]
 ```
+
+### Chi tiết các bước thực nghiệm cụ thể:
+- **Thực nghiệm 0: Raw Baseline**
+  - Huấn luyện mô hình nguyên bản dùng dữ liệu xương thô (chỉ chạy normalization cơ bản của SPOTER, không chạy cắt ghép TBL/BGSP, không nội suy và không tăng cường dữ liệu) làm hệ quy chiếu gốc cho toàn nghiên cứu.
+- **Thực nghiệm 1: TBL Preprocessing**
+  - Khảo sát biến thiên góc ngưỡng $\theta \in \{140^\circ, 150^\circ, 160^\circ, 170^\circ\}$ (4 runs) để chọn $\theta$ tốt nhất.
+  - Sử dụng $\theta$ tốt nhất, khảo sát biến thiên trễ đệm $\tau_b \in \{200, 400, 600\}\text{ ms}$ (3 runs).
+- **Thực nghiệm 2: Keypoint Interpolation**
+  - Chạy mô hình có bật nội suy lấp khuyết điểm khuyết tay để đối chiếu hiệu quả cải thiện so với baseline ở Thực nghiệm 1 (1 run).
+- **Thực nghiệm 3: Anchor-based Normalization**
+  - So sánh chuẩn hóa Body mặc định (Shoulder-distance) vs. Neck-centered (tâm cổ) vs. Nose-centered (tâm mũi) (2 runs mới).
+- **Thực nghiệm 4: Augmentation Ablation (Chia làm 2 pha nghiêm ngặt):**
+  - **Pha 1 (Đánh giá độc lập):** Thử nghiệm đơn lẻ từng phép biến đổi: Base + Spatial (Rotate/Shear), Base + Perspective (Skew), Base + Kinematic (Arm Joint), Base + Noise (Gaussian) (4 runs). *Loại bỏ ngay các kỹ thuật làm sụt giảm độ chính xác của mô hình.*
+  - **Pha 2 (Đánh giá cộng dồn):** Gộp các phép tăng cường có hiệu quả tốt lại với nhau (vd: Spatial + Perspective + Noise) để đo đạc tác dụng cộng dồn (dự kiến ~2 runs).
+- **Thực nghiệm 5: Cross-Model Validation**
+  - Áp dụng pipeline tối ưu nhất tìm được trên SPOTER sang mô hình SL-GCN (đối chiếu SL-GCN Baseline vs. SL-GCN Optimized) để chứng minh tính tổng quát hóa (2 runs).
 
 ### Chi tiết các đầu mục cần phát triển thêm (New Implementation Tasks):
 1. **Keypoint Reconstruction:** Xây dựng class `PoseInterpolate` tại `src/features/transforms/base.py` hoặc trong loader để nội suy tuyến tính lấp đầy các tọa độ $(0,0)$ có độ tin cậy thấp.
@@ -54,11 +71,11 @@ flowchart TD
 - **Cục bộ (Mac GPU - MPS):** 
   - Tốc độ huấn luyện: ~3.5 phút/epoch (gồm cả validation).
   - Thời gian huấn luyện 1 run (100 epochs): **~5.8 giờ**.
-  - Tổng 17 runs thực nghiệm: **~98 giờ** (quá tải đối với máy cá nhân).
+  - Tổng 19 runs thực nghiệm: **~110 giờ** (quá tải đối với máy cá nhân).
 - **Khuyến nghị sử dụng Kaggle 2x T4 GPU:**
   - Tốc độ huấn luyện: ~1 phút/epoch (với PyTorch DDP).
   - Thời gian huấn luyện 1 run: **~1 - 1.5 giờ**.
-  - Tận dụng cơ chế chạy song song (Parallel Notebooks) trên Kaggle để chạy 17 runs trong **dưới 24 giờ**.
+  - Tận dụng cơ chế chạy song song (Parallel Notebooks) trên Kaggle để chạy 19 runs trong **dưới 24 giờ** (khoảng 19 - 28 GPU-hours, nằm trong hạn mức 30 giờ GPU miễn phí hàng tuần của Kaggle).
 
 ---
 
