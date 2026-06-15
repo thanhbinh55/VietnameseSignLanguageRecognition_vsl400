@@ -15,7 +15,7 @@ experiments/
 demo/
 *.log
 *.pose
-
+*.zip
 # Hệ điều hành
 .DS_Store
 .DS_Store?

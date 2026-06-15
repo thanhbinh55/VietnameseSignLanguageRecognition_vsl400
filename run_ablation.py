@@ -14,6 +14,7 @@ def main():
     parser.add_argument("--epochs", type=int, default=None, help="Override number of training epochs (e.g., set to 1 for quick tests)")
     parser.add_argument("--per_device_train_batch_size", type=int, default=None, help="Override training batch size")
     parser.add_argument("--per_device_eval_batch_size", type=int, default=None, help="Override evaluation batch size")
+    parser.add_argument("--data_dir", type=str, default=None, help="Override data directory path (e.g., /kaggle/input/data-vsl400-front-view)")
     
     args = parser.parse_args()
     
@@ -49,6 +50,8 @@ def main():
             train_args.training.per_device_train_batch_size = args.per_device_train_batch_size
         if args.per_device_eval_batch_size is not None:
             train_args.training.per_device_eval_batch_size = args.per_device_eval_batch_size
+        if args.data_dir is not None:
+            train_args.data.data_dir = args.data_dir
             
         if args.dry_run:
             print("Running dry-run verification...")
