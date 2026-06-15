@@ -5,7 +5,6 @@ evaluate
 simple-parsing
 torch
 torchvision
-eva-decord
 accelerate
 scikit-learn
 wandb==0.17.4
