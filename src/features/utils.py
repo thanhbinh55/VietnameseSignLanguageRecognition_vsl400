@@ -48,13 +48,12 @@ def _get_spoter_transforms(
     processor: FeatureExtractionMixin,
     transform_config: TransformConfig,
 ) -> Compose:
-    transforms = []
+    transforms = [PoseExtract()]
     
     if transform_config.interpolate:
         transforms.append(PoseInterpolate())
         
     transforms.extend([
-        PoseExtract(),
         SPOTERJointSelect(include_face=transform_config.include_face),
         SPOTERTensorToDict(),
     ])
@@ -92,6 +91,9 @@ def _get_sl_gcn_transforms(
     transform_config: TransformConfig,
 ) -> Compose:
     transforms = [PoseExtract()]
+
+    if transform_config.interpolate:
+        transforms.append(PoseInterpolate())
 
     if split == "train":
         transforms.append(
