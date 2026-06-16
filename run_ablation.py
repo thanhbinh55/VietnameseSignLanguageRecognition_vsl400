@@ -53,6 +53,10 @@ def main():
         if args.data_dir is not None:
             train_args.data.data_dir = args.data_dir
             
+        # Automatically disable MPS if running on a non-macOS platform (Windows/Linux)
+        if sys.platform != "darwin" and hasattr(train_args.training, "use_mps_device"):
+            train_args.training.use_mps_device = False
+            
         if args.dry_run:
             print("Running dry-run verification...")
             # Load dataset
