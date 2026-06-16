@@ -118,6 +118,41 @@ Checkpoint weights and training logs will be saved to the `experiments/` directo
 
 ---
 
+## Running Ablation Study
+
+To systematically evaluate the impact of different preprocessing, augmentation, and model settings (the 19 greedy ablation trials):
+
+### 1. Generate Configurations
+First, generate the 19 configuration files for the ablation runs:
+```bash
+python3 generate_ablation_configs.py
+```
+This will output `run_00.yaml` to `run_18.yaml` inside `src/configs/ablation/`.
+
+### 2. Run a Trial (Local)
+To execute a specific trial locally (e.g., Run 07):
+```bash
+python3 run_ablation.py --run_id 7
+```
+
+**Dry-run check:** To quickly verify that the dataset and model load correctly without running the full training process:
+```bash
+python3 run_ablation.py --run_id 7 --dry_run
+```
+
+**Override epoch count:** For quick debugging, you can override the training epoch count (e.g., set to 1 epoch):
+```bash
+python3 run_ablation.py --run_id 7 --epochs 1
+```
+
+### 3. Generate Ablation Report
+Once trials are completed (results saved as `.json` under `experiments/ablation_results/`), run the summary script to compile a structured markdown report comparing metrics across all runs:
+```bash
+python3 generate_ablation_report.py
+```
+
+---
+
 ## Running Evaluation & Inference
 
 1. **Evaluate Checkpoint**:
