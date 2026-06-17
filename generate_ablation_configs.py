@@ -4,6 +4,8 @@ configs_dir = "src/configs/ablation"
 os.makedirs(configs_dir, exist_ok=True)
 
 def generate_spoter_yaml(run_id, data_dir="data/processed/vsl_400", aug_prob=0.3, add_gaussian_noise="true", interpolate="false", anchor="box", include_face="false", active_augs="[0, 1, 2, 3]"):
+    is_face_included = str(include_face).lower() == "true"
+    hidden_dim = 148 if is_face_included else 108
     content = f"""data:
   dataset: visl_400
   modality: pose
@@ -24,7 +26,7 @@ model:
   arch: spoter
   num_frozen_layers: 0
   num_frames: 96
-  hidden_dim: 108
+  hidden_dim: {hidden_dim}
 training:
   output_dir: experiments/ablation/run_{run_id:02d}
   run_name: run_{run_id:02d}
@@ -36,9 +38,9 @@ training:
   per_device_train_batch_size: 64
   per_device_eval_batch_size: 128
   gradient_accumulation_steps: 1
-  dataloader_num_workers: 2
+  dataloader_num_workers: 0
   dataloader_pin_memory: false
-  dataloader_persistent_workers: true
+  dataloader_persistent_workers: false
   save_total_limit: 1
   save_safetensors: true
   fp16: false
@@ -85,9 +87,9 @@ training:
   per_device_train_batch_size: 32
   per_device_eval_batch_size: 64
   gradient_accumulation_steps: 1
-  dataloader_num_workers: 2
+  dataloader_num_workers: 0
   dataloader_pin_memory: false
-  dataloader_persistent_workers: true
+  dataloader_persistent_workers: false
   save_total_limit: 1
   save_safetensors: true
   fp16: false

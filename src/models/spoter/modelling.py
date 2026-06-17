@@ -67,8 +67,18 @@ class SPOTER(nn.Module):
                 .unsqueeze(0)
             )
         )
+        # Find a suitable number of heads that divides hidden_dim
+        num_heads = 9
+        if hidden_dim % 9 != 0:
+            for h in [8, 7, 6, 5, 4, 3, 2]:
+                if hidden_dim % h == 0:
+                    num_heads = h
+                    break
+            else:
+                num_heads = 1
+
         self.class_query = nn.Parameter(torch.rand(1, hidden_dim))
-        self.transformer = nn.Transformer(hidden_dim, 9, 6, 6)
+        self.transformer = nn.Transformer(hidden_dim, num_heads, 6, 6)
         self.linear_class = nn.Linear(hidden_dim, num_classes)
 
         # Deactivate the initial attention decoder mechanism
@@ -113,7 +123,7 @@ class SPOTERForGraphClassification(PreTrainedModel):
             hidden_dim=self.config.hidden_dim,
         )
 
-        if Path(self.config.pretrained).exists():
+        if self.config.pretrained and Path(self.config.pretrained).exists():
             state_dict = torch.load(self.config.pretrained)
             for key in list(state_dict.keys()):
                 if key.startswith("model."):

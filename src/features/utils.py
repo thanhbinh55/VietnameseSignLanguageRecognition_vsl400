@@ -48,7 +48,7 @@ def _get_spoter_transforms(
     processor: FeatureExtractionMixin,
     transform_config: TransformConfig,
 ) -> Compose:
-    transforms = [PoseExtract()]
+    transforms = [PoseExtract(keep_face=transform_config.include_face)]
     
     if transform_config.interpolate:
         transforms.append(PoseInterpolate())
@@ -90,7 +90,7 @@ def _get_sl_gcn_transforms(
     processor: FeatureExtractionMixin,
     transform_config: TransformConfig,
 ) -> Compose:
-    transforms = [PoseExtract()]
+    transforms = [PoseExtract(keep_face=False)]
 
     if transform_config.interpolate:
         transforms.append(PoseInterpolate())

@@ -19,12 +19,15 @@ def compute_flops_and_params(model, inputs: dict) -> tuple:
     else:
         inputs = inputs["video"].permute(1, 0, 2, 3)
     inputs = inputs.unsqueeze(0).to(model.device)
-    macs, params = profile(model, inputs=(inputs,), verbose=False)
-    for module in model.modules():
-        module._buffers.pop("total_ops", None)
-        module._buffers.pop("total_params", None)
-    flops = macs * 2
-    return flops, params
+    try:
+        macs, params = profile(model, inputs=(inputs,), verbose=False)
+        flops = macs * 2
+        return flops, params
+    finally:
+        for module in model.modules():
+            module._buffers.pop("total_ops", None)
+            module._buffers.pop("total_params", None)
+
 
 
 def save_evaluation_results(

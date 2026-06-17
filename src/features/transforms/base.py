@@ -5,10 +5,36 @@ from typing import Dict, Any, Union
 
 
 class PoseExtract:
+    def __init__(self, keep_face: bool = False) -> None:
+        self.cache = {}
+        self.keep_face = keep_face
+
     def __call__(self, inputs: Union[Dict[str, Any], str, Path]) -> Pose:
         if isinstance(inputs, (str, Path)):
+            path_str = str(inputs)
+            if path_str in self.cache:
+                return self.cache[path_str]
             with open(inputs, "rb") as f:
                 pose = Pose.read(f.read())
+            
+            # Prune components to save RAM
+            to_remove = ["POSE_WORLD_LANDMARKS"]
+            points_to_remove = None
+            if not self.keep_face:
+                if "FACE_LANDMARKS" in [c.name for c in pose.header.components]:
+                    to_remove.append("FACE_LANDMARKS")
+            else:
+                # Remove face points we don't need
+                all_face_points = [str(i) for i in range(468)]
+                face_landmarks_to_keep = [
+                    "70", "105", "336", "334", "33", "133", "159", "145", "362", "263",
+                    "386", "374", "61", "291", "0", "17", "13", "14", "37", "267"
+                ]
+                points_to_remove = {"FACE_LANDMARKS": [p for p in all_face_points if p not in face_landmarks_to_keep]}
+            
+            pose = pose.remove_components(to_remove, points_to_remove)
+            self.cache[path_str] = pose
+            return pose
         else:
             from pose_format.utils.holistic import load_holistic
             pose = load_holistic(

@@ -67,6 +67,8 @@ class SPOTERAugment:
         respectively.
         """
         if "nose_X" in sign:
+            face_keys = [k[:-2] for k in sign.keys() if k.startswith("face_") and k.endswith("_X")]
+            body_keys = list(BODY_LANDMARKS) + face_keys
             body_landmarks = {
                 identifier: [
                     (x, y)
@@ -74,7 +76,8 @@ class SPOTERAugment:
                         sign[identifier + "_X"], sign[identifier + "_Y"]
                     )
                 ]
-                for identifier in BODY_LANDMARKS
+                for identifier in body_keys
+                if identifier + "_X" in sign and identifier + "_Y" in sign
             }
             hand_landmarks = {
                 identifier: [
@@ -84,15 +87,20 @@ class SPOTERAugment:
                     )
                 ]
                 for identifier in HANDS_LANDMARKS
+                if identifier + "_X" in sign and identifier + "_Y" in sign
             }
         else:
+            face_keys = [k for k in sign.keys() if k.startswith("face_")]
+            body_keys = list(BODY_LANDMARKS) + face_keys
             body_landmarks = {
                 identifier: sign[identifier]
-                for identifier in BODY_LANDMARKS
+                for identifier in body_keys
+                if identifier in sign
             }
             hand_landmarks = {
                 identifier: sign[identifier]
                 for identifier in HANDS_LANDMARKS
+                if identifier in sign
             }
         return body_landmarks, hand_landmarks
 
@@ -220,10 +228,10 @@ class SPOTERShear(SPOTERAugment):
             logging.error("Unsupported shear type provided.")
             return {}
 
-        body_keys = BODY_LANDMARKS
+        body_keys = list(body_landmarks.keys())
         body_array = self.landmarks_to_numpy(body_landmarks, body_keys)
         
-        hand_keys = HANDS_LANDMARKS
+        hand_keys = list(hand_landmarks.keys())
         hand_array = self.landmarks_to_numpy(hand_landmarks, hand_keys)
 
         augmented_zero_landmark = cv2.perspectiveTransform(
