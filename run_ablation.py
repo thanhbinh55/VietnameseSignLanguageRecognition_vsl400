@@ -15,6 +15,7 @@ def main():
     parser.add_argument("--per_device_train_batch_size", type=int, default=None, help="Override training batch size")
     parser.add_argument("--per_device_eval_batch_size", type=int, default=None, help="Override evaluation batch size")
     parser.add_argument("--data_dir", type=str, default=None, help="Override data directory path (e.g., /kaggle/input/data-vsl400-front-view)")
+    parser.add_argument("--resume", action="store_true", help="Automatically resume from the latest checkpoint if it exists in output_dir")
     
     args = parser.parse_args()
     
@@ -52,6 +53,19 @@ def main():
             train_args.training.per_device_eval_batch_size = args.per_device_eval_batch_size
         if args.data_dir is not None:
             train_args.data.data_dir = args.data_dir
+            
+        # Automatically detect and resume from checkpoint if requested
+        if args.resume:
+            output_dir = Path(train_args.training.output_dir)
+            checkpoints = list(output_dir.glob("checkpoint-*"))
+            if checkpoints:
+                # Sort checkpoints by step number (x.name.split("-")[1])
+                checkpoints.sort(key=lambda x: int(x.name.split("-")[1]))
+                latest_checkpoint = str(checkpoints[-1])
+                train_args.training.resume_from_checkpoint = latest_checkpoint
+                print(f"Auto-resuming Run {args.run_id:02d} from: {latest_checkpoint}")
+            else:
+                print(f"Warning: --resume flag set, but no checkpoints found in {output_dir}. Starting from scratch.")
             
         # Automatically disable MPS if running on a non-macOS platform (Windows/Linux)
         if sys.platform != "darwin" and hasattr(train_args.training, "use_mps_device"):
