@@ -8,6 +8,9 @@ data:
     add_gaussian_noise: true
     gaussian_noise_mean: 0.0
     gaussian_noise_std: 0.001
+    interpolate: true   # PoseInterpolate — linear interp for missing keypoints (Roh et al. 2024, Run 07-08)
+    anchor: "neck"      # Neck anchor normalization — best result in ablation +3% Test Acc (Run 08)
+    include_face: false # Facial landmarks did not improve in this dataset/setup (Run 15)
   fps: 25
   debug: False
 model:

@@ -1,90 +1,179 @@
-# Kế hoạch Thực nghiệm & Phân tích Tối ưu hóa Pipeline Nhận diện VSL
-*(Tài liệu Context phục vụ cho các Session tiếp theo)*
+# Thiết kế Thực nghiệm Ablation Study — VSL Keypoint Pipeline
+
+> Tài liệu mô tả phương pháp, thiết kế thực nghiệm và kết quả greedy ablation study được thực hiện để xác định pipeline tiền xử lý keypoint tối ưu cho bài toán nhận dạng từ ký hiệu tiếng Việt (Isolated Word-Level VSL Recognition).
 
 ---
 
-## 1. Hiện trạng Kiến trúc Dự án (Codebase Audit)
-Dự án đã được đồng bộ hóa và làm sạch trong tệp [architecture_analysis.md](VietnameseSignLanguageRecognition/docs/architecture_analysis.md) với các điểm cốt lõi:
-- **Mô hình hỗ trợ huấn luyện cục bộ (Train từ đầu):** Chỉ có **SPOTER** (Pose-based) và **VideoMAE** (RGB-based) có mã nguồn mô hình đầy đủ tại `src/models/`.
-- **Cơ chế tải và huấn luyện SL-GCN:** Mã nguồn gốc PyTorch của SL-GCN không nằm trong repo Git cục bộ, do đó không hỗ trợ khởi tạo huấn luyện từ đầu (from scratch). Tuy nhiên, bạn vẫn có thể huấn luyện tinh chỉnh (fine-tuning), đánh giá hoặc suy diễn hoàn toàn cục bộ (offline) bằng cách trỏ `pretrained` tới thư mục checkpoint SL-GCN có sẵn trên máy (chứa weights kèm theo các file mã nguồn custom như `modeling_sl_gcn.py`). Cờ `trust_remote_code=True` sẽ tự động import mã nguồn custom này từ chính thư mục cục bộ đó mà không cần mạng. Ngoài ra, pipeline ONNX của SL-GCN sẽ trực tiếp đọc tệp `.onnx` ở local.
-- **Tiền xử lý cục bộ:** Đã cấu trúc lại dự án theo hướng thuần offline/cục bộ (không đẩy kết quả lên HF Hub, tắt Wandb, tự động ánh xạ nhãn từ file JSON metadata nếu thiếu `gloss.csv`). Các pipeline ONNX tự tìm kiếm tệp tin checkpoint `.onnx` ở thư mục local thay vì tải từ Hub.
+## 1. Bối cảnh và Động lực
+
+Bài báo VSL400 gốc (Nguyen Quoc et al., 2026) sử dụng một bộ tham số tiền xử lý cố định cho thuật toán TBL và BGSP mà chưa có ablation trực tiếp trên mô hình nhận dạng hạ nguồn. Cụ thể:
+
+- Ngưỡng góc khuỷu tay `θ = 160°` và trễ đệm `τb = 400ms` được chọn theo kinh nghiệm.
+- Chưa có đánh giá tác động của keypoint interpolation, anchor normalization, augmentation và facial landmarks trên tập dữ liệu VSL400.
+
+Ablation study này nhằm:
+
+1. **Kiểm chứng** tham số TBL mặc định so với các giá trị thay thế.
+2. **Đo lường tác động riêng lẻ** của từng kỹ thuật tiền xử lý: nội suy keypoint, chuẩn hóa theo điểm neo, tăng cường dữ liệu, facial landmarks.
+3. **Xác thực chéo** pipeline tối ưu trên mô hình SL-GCN.
 
 ---
 
-## 2. Đối chiếu & Phân tích Phương pháp luận (Comparative Literature Review)
+## 2. Thiết lập Thực nghiệm
 
-### A. Bài báo VSL400 (`vsl400_dataset.pdf`):
-- **Quy mô:** 74,259 clips, 400 từ, 28 người ký, tri-view synchronized.
-- **Tiền xử lý:** TBL (góc khuỷu tay $\theta = 160^\circ$, số frame duy trì $N = 20$, trễ đệm $\tau_b = 400\text{ ms}$) và BGSP (lọc thời lượng $\tau_{min} = 0.67\text{ s}$, crop $1080 \times 1080$).
-- **Hạn chế nghiên cứu:** Chỉ sử dụng một bộ tham số tiền xử lý cố định, chưa chạy ablation study để chứng minh tính tối ưu của các ngưỡng toán học này đối với mô hình nhận diện hạ nguồn.
-- **Phân tách dữ liệu:** Sử dụng cơ chế chia **Signer-disjoint** (người ký độc lập) để đánh giá.
+| Mục | Thông số |
+| :--- | :--- |
+| **Dataset** | VSL400 · Subset: cam_1 · 400 gloss · 28 signers |
+| **Split Protocol** | Signer-disjoint (`visl_400.py`, seed=42) |
+| **Mô hình (Phase 0–3)** | SPOTER · hidden_dim=108 · 9 heads · 6 enc/dec layers |
+| **Mô hình (Phase 4)** | SL-GCN · 27 keypoints |
+| **Số epoch** | 100 · LR cosine decay · warmup_ratio=0.05 |
+| **Batch size** | Train: 64 · Val/Test: 128 |
+| **Optimizer** | AdamW · lr=5e-4 · weight_decay=0.01 |
+| **Metric chính** | Top-1 Accuracy + Macro F1 (Val & Test) |
+| **Phần cứng** | Mac MPS (M4) · ~3.5 phút/epoch · ~5.8 giờ/run |
+| **Seed** | 1 seed duy nhất (seed=42) |
 
-### B. Bài báo QIPEDC VSL (`IJSRED-V9I1P55.pdf`):
-- **Quy mô:** 6,046 videos, 3,782 từ (64% từ chỉ có duy nhất 1 mẫu huấn luyện), 11 người ký.
-- **Kỹ thuật nổi bật:**
-  - **Nội suy Keypoint (Interpolation):** Điền khuyết các keypoint bị thiếu (confidence < 0.5) bằng nội suy tuyến tính/spline dựa trên các frame lân cận.
-  - **Chuẩn hóa chuỗi thời gian:** Zero-padding nếu ngắn hơn 60 frames, downsampling đều nếu dài hơn 60 frames.
-  - **Tăng cường:** Spatial (Crop tỷ lệ 0.85, Zoom 1.2x, Rotate $\pm 8^\circ$), Geometric (**Perspective skew** phối cảnh hệ số 0.10).
-  - **Facial Landmarks:** Chứng minh việc đưa facial keypoint (eyebrows, mouth, eyes) giúp tăng độ chính xác từ $3.67\%$ đến $8.81\%$.
-  - **Đánh giá:** So sánh giữa Vocabulary-Coverage-First (chia stratified tránh rò rỉ dữ liệu tăng cường) và Leave-One-Signer-Out (LOSO).
+> ⚠️ **Giới hạn thực nghiệm:** Do mỗi run mất ~5.8 giờ, một số runs trong Phase 1 và Phase 4 chưa được thực thi. Kết quả hiện có là **11/19 runs**. Xem chi tiết tại [ablation_study_report.md](ablation_study_report.md).
 
 ---
 
-## 3. Khung Thiết kế Thực nghiệm (Greedy Ablation Study Design)
-Để tránh bùng nổ tổ hợp phép thử (160 runs $\approx$ 40 ngày chạy), chúng ta áp dụng mô hình thực nghiệm tiệm tiến (Greedy) gồm 19 runs trên mô hình SPOTER (sau đó xác thực chéo trên SL-GCN):
+## 3. Thiết kế Greedy Ablation (19 Runs)
+
+Thay vì grid search đầy đủ (160+ runs ≈ hàng tháng chạy), thiết kế này áp dụng mô hình tiệm tiến (greedy): mỗi phase tìm cấu hình tốt nhất rồi dùng nó làm nền cho phase tiếp theo.
 
 ```mermaid
 flowchart TD
-    E0["Thực nghiệm 0: Raw Baseline\n(Không TBL, không nội suy, không Aug)"] --> E1["Thực nghiệm 1: TBL Preprocessing\n(Tìm θ và τb tối ưu nhất)"]
-    E1 --> E2["Thực nghiệm 2: Keypoint Interpolation\n(So sánh Có vs Không nội suy)"]
-    E2 --> E3["Thực nghiệm 3: Anchor Normalization\n(Bbox vai vs. Neck-centered vs. Nose-centered)"]
-    E3 --> E4["Thực nghiệm 4: Augmentation Ablation\n(Pha 1: Độc lập | Pha 2: Cộng dồn)"]
-    E4 --> E5["Thực nghiệm 5: Cross-Model Validation\n(Áp dụng toàn bộ pipeline tối ưu lên SL-GCN)"]
+    E0["Phase 0: Raw Baseline\n(Run 00)\nKhông TBL, không nội suy, không aug"]
+    E1["Phase 1: TBL Sweep\n(Run 01–06)\nTìm θ và τb tối ưu"]
+    E2["Phase 2: Keypoint Interpolation\n(Run 07)\nSo sánh có vs không nội suy"]
+    E3["Phase 2b: Anchor Normalization\n(Run 08–09)\nNeck vs Nose vs Box anchor"]
+    E4["Phase 3: Augmentation Ablation\n(Run 10–15)\nĐộc lập rồi cộng dồn"]
+    E5["Phase 4: Cross-Model Validation\n(Run 16–18)\nÁp pipeline tối ưu lên SL-GCN"]
+
+    E0 --> E1 --> E2 --> E3 --> E4 --> E5
 ```
 
-### Chi tiết các bước thực nghiệm cụ thể:
-- **Thực nghiệm 0: Raw Baseline**
-  - Huấn luyện mô hình nguyên bản dùng dữ liệu xương thô (chỉ chạy normalization cơ bản của SPOTER, không chạy cắt ghép TBL/BGSP, không nội suy và không tăng cường dữ liệu) làm hệ quy chiếu gốc cho toàn nghiên cứu.
-- **Thực nghiệm 1: TBL Preprocessing**
-  - Khảo sát biến thiên góc ngưỡng $\theta \in \{140^\circ, 150^\circ, 160^\circ, 170^\circ\}$ (4 runs) để chọn $\theta$ tốt nhất.
-  - Sử dụng $\theta$ tốt nhất, khảo sát biến thiên trễ đệm $\tau_b \in \{200, 400, 600\}\text{ ms}$ (3 runs).
-- **Thực nghiệm 2: Keypoint Interpolation**
-  - Chạy mô hình có bật nội suy lấp khuyết điểm khuyết tay để đối chiếu hiệu quả cải thiện so với baseline ở Thực nghiệm 1 (1 run).
-- **Thực nghiệm 3: Anchor-based Normalization**
-  - So sánh chuẩn hóa Body mặc định (Shoulder-distance) vs. Neck-centered (tâm cổ) vs. Nose-centered (tâm mũi) (2 runs mới).
-- **Thực nghiệm 4: Augmentation Ablation (Chia làm 2 pha nghiêm ngặt):**
-  - **Pha 1 (Đánh giá độc lập):** Thử nghiệm đơn lẻ từng phép biến đổi: Base + Spatial (Rotate/Shear), Base + Perspective (Skew), Base + Kinematic (Arm Joint), Base + Noise (Gaussian) (4 runs). *Loại bỏ ngay các kỹ thuật làm sụt giảm độ chính xác của mô hình.*
-  - **Pha 2 (Đánh giá cộng dồn):** Gộp các phép tăng cường có hiệu quả tốt lại với nhau (vd: Spatial + Perspective + Noise) để đo đạc tác dụng cộng dồn (dự kiến ~2 runs).
-- **Thực nghiệm 5: Cross-Model Validation**
-  - Áp dụng pipeline tối ưu nhất tìm được trên SPOTER sang mô hình SL-GCN (đối chiếu SL-GCN Baseline vs. SL-GCN Optimized) để chứng minh tính tổng quát hóa (2 runs).
+### Bảng 19 Runs
 
-### Chi tiết các đầu mục cần phát triển thêm (New Implementation Tasks):
-1. **Keypoint Reconstruction:** Xây dựng class `PoseInterpolate` tại `src/features/transforms/base.py` hoặc trong loader để nội suy tuyến tính lấp đầy các tọa độ $(0,0)$ có độ tin cậy thấp.
-2. **Anchor-based Normalization:** Tạo thêm các phương thức chuẩn hóa mới:
-   - Dịch chuyển tâm gốc tọa độ về **Neck (Cổ)** hoặc **Nose (Mũi)** thay vì bounding box động của cơ thể.
-3. **Perspective Skew:** Kích hoạt và kiểm thử chế độ phối cảnh `"perspective"` hiện đang bị comment trong `SPOTERShear` và `SPOTERRandomAugment`.
-4. **Facial Features:** Thử nghiệm đưa thêm các điểm neo khuôn mặt (eyebrows, mouth, eyes) vào `SPOTERJointSelect`.
-
----
-
-## 4. Tài nguyên & Phương án Huấn luyện (Resource & Execution Plan)
-- **Cục bộ (Mac GPU - MPS):** 
-  - Tốc độ huấn luyện: ~3.5 phút/epoch (gồm cả validation).
-  - Thời gian huấn luyện 1 run (100 epochs): **~5.8 giờ**.
-  - Tổng 19 runs thực nghiệm: **~110 giờ** (quá tải đối với máy cá nhân).
-- **Khuyến nghị sử dụng Kaggle 2x T4 GPU:**
-  - Tốc độ huấn luyện: ~1 phút/epoch (với PyTorch DDP).
-  - Thời gian huấn luyện 1 run: **~1 - 1.5 giờ**.
-  - Tận dụng cơ chế chạy song song (Parallel Notebooks) trên Kaggle để chạy 19 runs trong **dưới 24 giờ** (khoảng 19 - 28 GPU-hours, nằm trong hạn mức 30 giờ GPU miễn phí hàng tuần của Kaggle).
+| Run | Phase | Cấu hình | Trạng thái |
+| :--- | :--- | :--- | :--- |
+| Run 00 | Phase 0 | Raw Baseline (không TBL, không aug) | ✅ Completed |
+| Run 01 | Phase 1 | TBL: θ=140°, τb=400ms | ❌ Failed |
+| Run 02 | Phase 1 | TBL: θ=150°, τb=400ms | ⏳ Missing |
+| Run 03 | Phase 1 | TBL: θ=160°, τb=400ms (default) | ✅ Completed |
+| Run 04 | Phase 1 | TBL: θ=170°, τb=400ms | ⏳ Missing |
+| Run 05 | Phase 1 | TBL: θ=160°, τb=200ms | ⏳ Missing |
+| Run 06 | Phase 1 | TBL: θ=160°, τb=600ms | ⏳ Missing |
+| Run 07 | Phase 2 | + Keypoint Interpolation (Box anchor) | ✅ Completed |
+| Run 08 | Phase 2b | + Interpolation + Neck Anchor | ✅ Completed |
+| Run 09 | Phase 2b | + Interpolation + Nose Anchor | ✅ Completed |
+| Run 10 | Phase 3 | Spatial Aug only (Rotate + Squeeze) | ✅ Completed |
+| Run 11 | Phase 3 | Perspective Skew only | ✅ Completed |
+| Run 12 | Phase 3 | Kinematic Aug only (ArmJointRotate) | ✅ Completed |
+| Run 13 | Phase 3 | Gaussian Noise only | ✅ Completed |
+| Run 14 | Phase 3 | Combined (Spatial + Perspective + Kinematic + Noise) | ✅ Completed |
+| Run 15 | Phase 3 | Combined + Facial Landmarks | ✅ Completed |
+| Run 16 | Phase 4 | SL-GCN Baseline | ⏳ Missing |
+| Run 17 | Phase 4 | SL-GCN + Interpolation + Best TBL | ⏳ Missing |
+| Run 18 | Phase 4 | SL-GCN + Interpolation + Best TBL + Face | ⏳ Missing |
 
 ---
 
-## 5. Hướng dẫn cho Agent trong Session mới
-Khi tiếp quản công việc từ tài liệu này, hãy:
-1. Đọc và phân tích các file:
-   - [spoter.py (transforms)](VietnameseSignLanguageRecognition/src/features/transforms/spoter.py)
-   - [spoter.py (augmentations)](VietnameseSignLanguageRecognition/src/features/augmentations/spoter.py)
-   - [arguments.py](VietnameseSignLanguageRecognition/src/configs/arguments.py)
-2. Bắt đầu viết module nội suy keypoint tuyến tính (`PoseInterpolate`) tại `src/features/transforms/base.py`.
-3. Bắt đầu chỉnh sửa hoặc bổ sung các lớp chuẩn hóa theo điểm neo cổ/mũi (`SPOTERSingleBodyDictNormalize`).
-4. Viết script tự động hóa grid-search các tham số TBL chạy trên Kaggle và xuất báo cáo markdown thống kê kết quả.
+## 4. Phương pháp Triển khai
+
+### 4.1 Sinh cấu hình tự động
+
+19 file YAML cấu hình được sinh tự động bằng script:
+
+```bash
+python3 generate_ablation_configs.py
+# Output: src/configs/ablation/run_00.yaml → run_18.yaml
+```
+
+Mỗi file YAML kế thừa cấu hình SPOTER chuẩn và chỉ override các tham số khác nhau giữa các runs.
+
+### 4.2 Chạy từng run
+
+```bash
+# Chạy một run cụ thể
+python3 run_ablation.py --run_id 8
+
+# Kiểm tra dataset & model load trước khi chạy đầy đủ
+python3 run_ablation.py --run_id 8 --dry_run
+
+# Override epoch để debug nhanh
+python3 run_ablation.py --run_id 8 --epochs 1
+
+# Resume từ checkpoint
+python3 run_ablation.py --run_id 8 --resume
+```
+
+Sau khi hoàn tất, kết quả được lưu tự động tại `experiments/ablation_results/run_XX.json`.
+
+### 4.3 Tổng hợp báo cáo
+
+```bash
+python3 generate_ablation_report.py
+# Output: docs/ablation_study_report.md
+```
+
+Script đọc tất cả file `run_XX.json` trong `experiments/ablation_results/` và tổng hợp thành báo cáo Markdown.
+
+> **Lưu ý:** File JSON kết quả được lưu ở `experiments/ablation_results/` (do `run_ablation.py` tạo), không phải trong thư mục checkpoint `experiments/ablation/run_XX/`. Nếu chạy thủ công bên ngoài `run_ablation.py`, cần copy file JSON vào đúng thư mục.
+
+---
+
+## 5. Tài nguyên & Chi phí Thực nghiệm
+
+| Môi trường | Tốc độ/epoch | Thời gian/run (100 epochs) | Tổng 19 runs |
+| :--- | :--- | :--- | :--- |
+| Mac MPS (M4) | ~3.5 phút | ~5.8 giờ | ~110 giờ |
+| Kaggle 2×T4 GPU | ~1 phút | ~1.5 giờ | ~28 giờ |
+
+Trong ablation study này, 11 runs đã được thực hiện trên Mac MPS (M4). Các runs còn lại chưa hoàn tất do giới hạn thời gian. Xem kết quả chi tiết tại [ablation_study_report.md](ablation_study_report.md).
+
+---
+
+## 6. Pipeline Được Đề Xuất
+
+Dựa trên 11 runs đã hoàn tất, pipeline tốt nhất được xác định là cấu hình **Run 08** (Neck Anchor Normalization + Keypoint Interpolation) đạt Test Accuracy cao nhất (84.08%):
+
+```
+1. TBL Segmentation    (θ=160°, τb=400ms, N=20)
+2. Keypoint Extraction (MediaPipe Holistic)
+3. PoseInterpolate     (confidence_threshold=0.5)
+4. SPOTERJointSelect   (54 khớp: 12 body + 42 hand)
+5. Neck Anchor Norm    (anchor="neck", scale=neck-nose distance)
+6. Hand Wrist Norm     (shift về tọa độ cổ tay)
+7. SPOTERPad           (96 frames, cycle-pad)
+8. SPOTERShift         ([0,1] → [-0.5, 0.5])
+```
+
+*Augmentation (Spatial + Perspective + Kinematic + Gaussian) chỉ áp dụng khi train, không đưa vào keypoint dataset tĩnh.*
+
+> **Giới hạn:** Pipeline trên dựa trên 11/19 runs. Tham số TBL (θ, τb) chưa được tối ưu hóa bằng grid search đầy đủ vì Phase 1 chỉ hoàn tất run θ=160°. Người dùng được khuyến nghị chạy thêm ablation trên dữ liệu riêng.
+
+---
+
+## 7. Công việc Còn Lại
+
+| Hạng mục | Mô tả | Ưu tiên |
+| :--- | :--- | :--- |
+| Hoàn tất Phase 1 | Chạy Run 02, 04, 05, 06 để xác định θ và τb tối ưu thực sự | Cao |
+| Hoàn tất Phase 4 | Chạy Run 16, 17, 18 để xác nhận chéo trên SL-GCN | Trung bình |
+| Multi-seed | Lặp lại các runs với ≥3 seed để có error bar | Trung bình |
+| Facial với model lớn | Thử `hidden_dim=148` với Neck Anchor + Combined Aug | Thấp |
+| Multi-view | Mở rộng sang cam_2, cam_3 | Thấp |
+
+---
+
+## 8. Tham khảo
+
+| Ký hiệu | Công trình |
+| :--- | :--- |
+| VSL400 (2026) | Nguyen Quoc et al., "A Multi-view Dataset for Vietnamese Word-Level Sign Language Recognition", Zenodo DOI: 10.5281/zenodo.17943574 |
+| SPOTER (2022) | Boháček & Hrúz, "Sign Pose-Based Transformer for Word-Level Sign Language Recognition", WACV Workshops |
+| Roh et al. (2024) | Roh et al., "Preprocessing Mediapipe Keypoints with Keypoint Reconstruction and Anchors for Isolated Sign Language Recognition", SignLang @ LREC-COLING |
+| QIPEDC-VSL (2026) | H. M. Dung, N. V. Hung, N. K. Dang, P. T. H. Nhai, "Towards Realistic Vietnamese Sign Language Recognition: A Large-Scale Dataset and Rigorous Evaluation Protocol", *IJSRED* Vol. 9 No. 1, 2026 |
+| OpenHands (2022) | Selvaraj et al., "OpenHands: Making Sign Language Recognition Accessible with Pose-based Pretrained Models", ACL |

@@ -70,9 +70,9 @@ class TransformConfig:
     gaussian_noise_std: float = 0.001
 
     # Ablation parameters
-    interpolate: bool = False
-    anchor: str = "box"
-    include_face: bool = False
+    interpolate: bool = True    # PoseInterpolate: linear interpolation for missing keypoints (Roh et al., 2024)
+    anchor: str = "neck"        # Best ablation result: neck anchor +3% Test Acc vs box (Run 08)
+    include_face: bool = False  # Facial landmarks did not improve in this setup (Run 15)
     active_augs: list = field(default_factory=lambda: [0, 1, 2, 3])
 
     def __post_init__(self):

@@ -24,3 +24,8 @@ demo/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# PDF papers
+*.pdf
+# NumPy preprocessed arrays
+*.npy

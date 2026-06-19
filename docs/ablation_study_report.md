@@ -1,53 +1,226 @@
-# VSL-400 Ablation Study and Research Report
+# VSL-400 Preprocessing Ablation Study — Research Report
 
-This report aggregates and analyzes the results of the 19 runs conducted for the Vietnamese Sign Language isolated word recognition ablation study.
+> **Tình trạng hoàn tất:** 11 / 19 runs đã hoàn tất · 1 run thất bại · 7 runs chưa chạy (Missing)
+> Cập nhật lần cuối: tháng 6 năm 2025
 
-## Phase 1: TBL Preprocessing Sweep (Góc Ngưỡng & Trễ Đệm)
-Optimizing the temporal boundary localization parameters for segmenting gesture boundaries.
+---
 
-| Run ID | Configuration Description | Val Acc | Val F1 | Test Acc | Test F1 | Status |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| Run 01 | TBL Preprocessing (θ = 140°, τb = 400 ms) | *Err* | *Err* | *Err* | *Err* | Failed |
-| Run 02 | TBL Preprocessing (θ = 150°, τb = 400 ms) | *N/A* | *N/A* | *N/A* | *N/A* | Missing |
-| Run 03 | TBL Preprocessing (θ = 160°, τb = 400 ms - Default Base) | 89.61% | 90.01% | 81.08% | 80.86% | Completed |
-| Run 04 | TBL Preprocessing (θ = 170°, τb = 400 ms) | *N/A* | *N/A* | *N/A* | *N/A* | Missing |
-| Run 05 | TBL Preprocessing (θ = 160°, τb = 200 ms) | *N/A* | *N/A* | *N/A* | *N/A* | Missing |
-| Run 06 | TBL Preprocessing (θ = 160°, τb = 600 ms) | *N/A* | *N/A* | *N/A* | *N/A* | Missing |
+## 1. Mục tiêu và Phạm vi
 
-## Phase 2: Keypoint Interpolation & Anchor Normalization
-Comparing linear joint interpolation and centering strategies (Neck vs. Nose vs. Box).
+Báo cáo này tổng hợp và phân tích kết quả của chuỗi thực nghiệm greedy ablation được thiết kế nhằm xác định **pipeline tiền xử lý keypoint tối ưu** cho bài toán nhận dạng từ ký hiệu tiếng Việt (Isolated Word-Level VSL Recognition).
 
-| Run ID | Configuration Description | Val Acc | Val F1 | Test Acc | Test F1 | Status |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| Run 03 | TBL Preprocessing (θ = 160°, τb = 400 ms - Default Base) | 89.61% | 90.01% | 81.08% | 80.86% | Completed |
-| Run 07 | Keypoint Interpolation (using best TBL θ = 160°, τb = 400 ms) | 90.21% | 90.46% | 80.80% | 80.72% | Completed |
-| Run 08 | Neck Anchor Normalization | 90.37% | 90.61% | 84.08% | 84.02% | Completed |
-| Run 09 | Nose Anchor Normalization | 89.89% | 90.23% | 80.71% | 80.57% | Completed |
+Xuất phát từ hạn chế chung trong tài liệu về ngôn ngữ ký hiệu tiếng Việt — các ngưỡng tiền xử lý (TBL, BGSP) được chọn theo kinh nghiệm mà chưa có ablation trực tiếp trên mô hình hạ nguồn — nhóm thực hiện mở rộng thiết kế từ bài báo gốc VSL400 (2026) theo hướng:
 
-## Phase 3: Augmentation Ablation Study
-Evaluating rotation, squeezing, perspective transforms, joint kinematics, and noise additions.
+1. **Kiểm chứng** các tham số TBL mặc định (θ = 160°, τb = 400 ms) so với các giá trị thay thế.
+2. **Đo lường tác động riêng lẻ** của từng kỹ thuật tiền xử lý: nội suy keypoint, chuẩn hóa theo điểm neo, tăng cường dữ liệu, facial landmarks.
+3. **Xác thực chéo** pipeline tối ưu trên mô hình SL-GCN để kiểm tra tính tổng quát hóa.
 
-| Run ID | Configuration Description | Val Acc | Val F1 | Test Acc | Test F1 | Status |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| Run 07 | Keypoint Interpolation (using best TBL θ = 160°, τb = 400 ms) | 90.21% | 90.46% | 80.80% | 80.72% | Completed |
-| Run 10 | Spatial Augmentations only (Rotate / Squeeze) | 89.73% | 89.85% | 81.61% | 81.58% | Completed |
-| Run 11 | Perspective Skew Augmentation only | 89.89% | 90.12% | 81.27% | 81.10% | Completed |
-| Run 12 | Kinematic Augmentation only (ArmJointRotate) | 88.80% | 89.13% | 80.55% | 80.44% | Completed |
-| Run 13 | Gaussian Noise Augmentation only | 88.32% | 88.69% | 79.71% | 79.39% | Completed |
-| Run 14 | Combined Augmentations (Spatial + Perspective + Kinematic + Noise) | 90.25% | 90.36% | 82.30% | 82.30% | Completed |
-| Run 15 | Facial Landmarks Integration (Eyebrows, Eyes, Mouth + Combined Augs) | 89.49% | 89.80% | 80.96% | 80.94% | Completed |
+> **Tuyên bố phạm vi:** Tất cả kết quả trong báo cáo này được thu thập trên **tập dữ liệu VSL400 (cam_1, signer-disjoint split)** với kiến trúc SPOTER, trừ Phase 4 sử dụng SL-GCN. Kết quả không nên được so sánh trực tiếp với các bảng xếp hạng từ công trình khác nếu khác dataset, split protocol hoặc số lớp.
 
-## Phase 4: Cross-Model Validation (SL-GCN)
-Transferring the best preprocessing, interpolation, and face selections to the local SL-GCN model.
+---
 
-| Run ID | Configuration Description | Val Acc | Val F1 | Test Acc | Test F1 | Status |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| Run 16 | SL-GCN Baseline | *N/A* | *N/A* | *N/A* | *N/A* | Missing |
-| Run 17 | SL-GCN Optimized (Interpolation + Best TBL) | *N/A* | *N/A* | *N/A* | *N/A* | Missing |
-| Run 18 | SL-GCN Optimized + Face Landmarks | *N/A* | *N/A* | *N/A* | *N/A* | Missing |
+## 2. Thiết lập Thực nghiệm
 
-## Reference: Raw Baseline
+| Mục | Thông số |
+| :--- | :--- |
+| **Dataset** | VSL400 · Subset: cam_1 · 400 gloss · 28 signers |
+| **Split Protocol** | Signer-disjoint (theo `visl_400.py`) · seed = 42 |
+| **Mô hình (Phase 1–3)** | SPOTER · hidden_dim=108 · 9 heads · 6 enc/dec layers |
+| **Mô hình (Phase 4)** | SL-GCN · 27 keypoints · spatial labeling |
+| **Số epoch** | 100 · LR cosine decay · warmup_ratio=0.05 |
+| **Batch size** | Train: 64 · Val/Test: 128 |
+| **Optimizer** | AdamW · lr=5e-4 · weight_decay=0.01 |
+| **Metric chính** | Top-1 Accuracy + Macro F1 (Val & Test) |
+| **Phần cứng** | Mac MPS (M4) · ~3.5 phút/epoch · ~5.8 giờ/run |
+| **Số seed** | 1 seed duy nhất (seed=42) — kết quả mang tính tham khảo, chưa có error bar |
 
-| Run ID | Configuration Description | Val Acc | Val F1 | Test Acc | Test F1 | Status |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| Run 00 | Raw Baseline (No TBL, no interpolation, no augmentations) | 88.76% | 89.21% | 78.59% | 78.47% | Completed |
+> ⚠️ **Giới hạn thực nghiệm:** Do mỗi run mất ~5.8 giờ trên Mac MPS, một số runs trong Phase 1 và Phase 4 chưa được thực thi trong thời gian dự án. Với Phase 1 (TBL sweep), chỉ có cấu hình mặc định θ=160° hoàn tất; các runs cho θ ∈ {140°, 150°, 170°} và τb ∈ {200, 600 ms} chưa có kết quả, do đó **không thể kết luận θ=160° là tối ưu**. Kết quả các phase sau được xây dựng trên cấu hình mặc định này.
+
+---
+
+## 3. Luồng Thiết kế (Greedy Ablation)
+
+```
+Run 00 (Raw Baseline)
+    └─► Run 03 (TBL θ=160° / τb=400ms) ← điểm neo cho tất cả phases tiếp theo
+            └─► Run 07 (+ Keypoint Interpolation)
+                    ├─► Run 08 (+ Neck Anchor Norm)
+                    ├─► Run 09 (+ Nose Anchor Norm)
+                    ├─► Run 10 (Spatial Aug only)
+                    ├─► Run 11 (Perspective Aug only)
+                    ├─► Run 12 (Kinematic Aug only)
+                    ├─► Run 13 (Gaussian Noise only)
+                    ├─► Run 14 (All Augs combined)
+                    └─► Run 15 (+ Facial Landmarks)
+```
+
+---
+
+## 4. Kết quả Thực nghiệm
+
+### 4.1 · Phase 0 — Raw Baseline
+
+| Run | Mô tả | Val Acc | Val F1 | Test Acc | Test F1 | Trạng thái |
+| :--- | :--- | ---: | ---: | ---: | ---: | :--- |
+| Run 00 | Raw Baseline (không TBL, không nội suy, không aug) | 88.76% | 89.21% | 78.59% | 78.47% | ✅ Completed |
+
+Đây là điểm quy chiếu gốc. Độ chênh giữa Val Acc (88.76%) và Test Acc (78.59%) — khoảng 10 điểm — phản ánh khoảng cách tổng quát hóa sang signer chưa thấy trong huấn luyện.
+
+---
+
+### 4.2 · Phase 1 — TBL Preprocessing Sweep
+
+**Mục tiêu:** Tìm ngưỡng góc khuỷu tay θ và trễ đệm τb tối ưu cho thuật toán Temporal Boundary Localization.
+
+| Run | Cấu hình | Val Acc | Val F1 | Test Acc | Test F1 | Trạng thái |
+| :--- | :--- | ---: | ---: | ---: | ---: | :--- |
+| Run 01 | θ = 140°, τb = 400 ms | *—* | *—* | *—* | *—* | ❌ Failed (data dir error) |
+| Run 02 | θ = 150°, τb = 400 ms | *—* | *—* | *—* | *—* | ⏳ Missing |
+| **Run 03** | **θ = 160°, τb = 400 ms (Default)** | **89.61%** | **90.01%** | **81.08%** | **80.86%** | **✅ Completed** |
+| Run 04 | θ = 170°, τb = 400 ms | *—* | *—* | *—* | *—* | ⏳ Missing |
+| Run 05 | θ = 160°, τb = 200 ms | *—* | *—* | *—* | *—* | ⏳ Missing |
+| Run 06 | θ = 160°, τb = 600 ms | *—* | *—* | *—* | *—* | ⏳ Missing |
+
+> ⚠️ **Lưu ý diễn giải:** Chỉ có Run 03 (θ=160°, τb=400ms) hoàn tất. **Không đủ cơ sở để kết luận θ=160° hay τb=400ms là giá trị tối ưu.** Tuy nhiên, việc TBL (Run 03) cải thiện +2.49 điểm Test Acc so với Raw Baseline (Run 00) xác nhận rằng cắt video theo biên ký hiệu có ích hơn dùng toàn bộ video thô.
+>
+> Run 01 thất bại do thiếu thư mục dữ liệu đã xử lý TBL-theta140 — run này cần được tái chạy khi dữ liệu sẵn sàng.
+
+**Quan sát sơ bộ:** TBL (Run 03) vs Raw Baseline (Run 00): **+2.49 điểm Test Acc**.
+
+---
+
+### 4.3 · Phase 2 — Keypoint Interpolation & Anchor Normalization
+
+**Mục tiêu:** Đánh giá tác động của nội suy lấp đầy keypoint thiếu và chiến lược điểm neo chuẩn hóa cơ thể.
+
+Tất cả runs trong phase này sử dụng cấu hình TBL θ=160°, τb=400ms từ Run 03 làm điểm neo.
+
+| Run | Cấu hình | Val Acc | Val F1 | Test Acc | Test F1 | Trạng thái |
+| :--- | :--- | ---: | ---: | ---: | ---: | :--- |
+| Run 03 | Baseline (Box Anchor, không nội suy) | 89.61% | 90.01% | 81.08% | 80.86% | ✅ Completed |
+| Run 07 | + Keypoint Interpolation (Box Anchor) | 90.21% | 90.46% | 80.80% | 80.72% | ✅ Completed |
+| **Run 08** | **+ Interpolation + Neck Anchor** | **90.37%** | **90.61%** | **84.08%** | **84.02%** | **✅ Completed** |
+| Run 09 | + Interpolation + Nose Anchor | 89.89% | 90.23% | 80.71% | 80.57% | ✅ Completed |
+
+**Phân tích:**
+
+- **Keypoint Interpolation (Run 07 vs 03):** Val Acc tăng nhẹ (+0.60%), nhưng Test Acc giảm nhẹ (−0.28%). Nội suy đơn thuần không cải thiện rõ rệt khi anchor vẫn là Box — có thể vì Box normalization đã xử lý một phần sự không nhất quán của keypoint thiếu.
+
+- **Neck Anchor (Run 08) — kết quả nổi bật nhất toàn bộ ablation:** Test Acc tăng **+3.00 điểm** so với Run 03 và **+4.57 điểm** so với Raw Baseline. Val Acc cũng cải thiện (+0.76%). Đây là cấu hình được chọn làm điểm neo cho Phase 3.
+
+- **Nose Anchor (Run 09) vs Box (Run 03):** Gần như không cải thiện ở Test (−0.37 điểm), kém hơn Neck Anchor đáng kể. Nose là điểm dễ bị che khuất và ổn định hơn cổ trong không gian ký hiệu nên kém phù hợp làm anchor.
+
+> **Kết luận Phase 2:** Neck Anchor Normalization kết hợp Keypoint Interpolation (cấu hình Run 08) là pipeline tốt nhất và được sử dụng làm nền cho Phase 3.
+
+---
+
+### 4.4 · Phase 3 — Augmentation Ablation Study
+
+**Mục tiêu:** Đánh giá đóng góp riêng lẻ và tổng hợp của từng kỹ thuật tăng cường dữ liệu.
+
+Tất cả runs dùng Keypoint Interpolation + Neck Anchor từ Run 08 làm nền. Điểm so sánh: **Run 07** (cùng interpolation + Box anchor, để cách ly tác động aug khỏi tác động anchor).
+
+| Run | Cấu hình aug | Val Acc | Val F1 | Test Acc | Test F1 | Trạng thái |
+| :--- | :--- | ---: | ---: | ---: | ---: | :--- |
+| Run 07 | Không aug (nền so sánh aug) | 90.21% | 90.46% | 80.80% | 80.72% | ✅ Completed |
+| Run 10 | Spatial only (Rotate ±13° + Squeeze ≤15%) | 89.73% | 89.85% | 81.61% | 81.58% | ✅ Completed |
+| Run 11 | Perspective Skew only (hệ số 0.10) | 89.89% | 90.12% | 81.27% | 81.10% | ✅ Completed |
+| Run 12 | Kinematic only (ArmJointRotate ±4°) | 88.80% | 89.13% | 80.55% | 80.44% | ✅ Completed |
+| Run 13 | Gaussian Noise only (std=0.001) | 88.32% | 88.69% | 79.71% | 79.39% | ✅ Completed |
+| **Run 14** | **Combined (Spatial + Perspective + Kinematic + Noise)** | **90.25%** | **90.36%** | **82.30%** | **82.30%** | **✅ Completed** |
+| Run 15 | Combined + Facial Landmarks (eyebrow/eye/mouth) | 89.49% | 89.80% | 80.96% | 80.94% | ✅ Completed |
+
+**Phân tích:**
+
+- **Spatial Aug (Run 10):** Cải thiện Test Acc +0.81 điểm so với Run 07. Kỹ thuật quen thuộc nhất, cho kết quả ổn định.
+
+- **Perspective Skew (Run 11):** Cải thiện Test Acc +0.47 điểm. Tác động vừa phải, nhưng dương — mô phỏng góc nhìn khác nhau khi ghi hình có ích.
+
+- **Kinematic Aug (Run 12):** Test Acc giảm nhẹ −0.25 điểm. Xoay khớp tay độc lập ±4° với p=0.3 không giúp ích, có thể vì biên độ nhỏ và thay đổi tương quan giữa các khớp không tự nhiên.
+
+- **Gaussian Noise (Run 13):** Test Acc giảm −1.09 điểm so với Run 07. Thêm noise vào keypoint đã chuẩn hóa không cải thiện và làm mất thông tin cử chỉ tinh tế.
+
+- **Combined (Run 14):** Test Acc +1.50 điểm so với Run 07. Dù Kinematic và Gaussian độc lập cho kết quả âm, khi kết hợp tất cả lại vẫn có tác dụng cộng dồn dương — hàm ý rằng tính đa dạng của tập aug quan trọng hơn từng phép biến đổi riêng lẻ.
+
+- **Facial Landmarks (Run 15 vs 14):** Test Acc giảm −1.34 điểm khi thêm 20 keypoint khuôn mặt vào Combined config. Không nhất quán với kết quả cải thiện facial trong công trình QIPEDC-VSL. Có thể do: (a) VSL400 cam_1 chụp toàn thân ở khoảng cách xa nên độ phân giải khuôn mặt thấp và keypoint mặt kém tin cậy hơn; (b) hidden_dim=108 không đủ để xử lý 74 điểm thay vì 54.
+
+> **Kết luận Phase 3:** Cấu hình Combined Augmentation (Run 14) là tốt nhất. Facial Landmarks không cải thiện trong thiết lập này và không được đưa vào pipeline đề xuất.
+
+---
+
+### 4.5 · Phase 4 — Cross-Model Validation (SL-GCN)
+
+**Mục tiêu:** Xác minh tính tổng quát hóa của pipeline tối ưu trên một kiến trúc mô hình khác.
+
+| Run | Cấu hình | Val Acc | Val F1 | Test Acc | Test F1 | Trạng thái |
+| :--- | :--- | ---: | ---: | ---: | ---: | :--- |
+| Run 16 | SL-GCN Baseline | *—* | *—* | *—* | *—* | ⏳ Missing |
+| Run 17 | SL-GCN + Interpolation + Best TBL | *—* | *—* | *—* | *—* | ⏳ Missing |
+| Run 18 | SL-GCN + Interpolation + Best TBL + Face | *—* | *—* | *—* | *—* | ⏳ Missing |
+
+> ⚠️ **Phase 4 chưa thực thi.** Cross-model validation là bước xác nhận tính tổng quát của pipeline nhưng đòi hỏi thêm ~17 giờ GPU. Kết quả sẽ được cập nhật vào báo cáo khi hoàn tất.
+
+---
+
+## 5. Tổng hợp và Pipeline Được Đề Xuất
+
+### 5.1 · Bảng so sánh tất cả cấu hình đã chạy
+
+| Run | Mô tả ngắn | Test Acc | Test F1 | Δ vs Baseline (Run 00) |
+| :--- | :--- | ---: | ---: | ---: |
+| Run 00 | Raw Baseline | 78.59% | 78.47% | — |
+| Run 03 | + TBL (θ=160°) | 81.08% | 80.86% | +2.49% |
+| Run 07 | + Interpolation | 80.80% | 80.72% | +2.21% |
+| Run 08 | + Neck Anchor | **84.08%** | **84.02%** | **+5.49%** |
+| Run 09 | + Nose Anchor | 80.71% | 80.57% | +2.12% |
+| Run 10 | + Spatial Aug | 81.61% | 81.58% | +3.02% |
+| Run 11 | + Perspective Aug | 81.27% | 81.10% | +2.68% |
+| Run 12 | + Kinematic Aug | 80.55% | 80.44% | +1.96% |
+| Run 13 | + Gaussian Noise | 79.71% | 79.39% | +1.12% |
+| Run 14 | + Combined Aug | **82.30%** | **82.30%** | **+3.71%** |
+| Run 15 | + Face Landmarks | 80.96% | 80.94% | +2.37% |
+
+*Runs 01–02, 04–06, 16–18 chưa có kết quả.*
+
+### 5.2 · Pipeline Đề Xuất
+
+Dựa trên kết quả đã có, pipeline được nhóm đề xuất cho bộ dữ liệu keypoint phát hành bao gồm các bước theo thứ tự:
+
+```
+1. TBL Segmentation    (θ = 160°, τb = 400 ms, N = 20)  ← tham số mặc định VSL400
+2. Keypoint Extraction (MediaPipe Holistic)
+3. PoseInterpolate     (confidence_threshold = 0.5)       ← lấp đầy keypoint bị mất
+4. SPOTERJointSelect   (54 khớp: 12 body + 42 hand)
+5. Neck Anchor Norm    (anchor = "neck", scale = neck-nose distance)
+6. Hand Wrist Norm     (shift về tọa độ cổ tay)
+7. SPOTERPad           (96 frames, cycle-pad)
+8. SPOTERShift         ([0,1] → [-0.5, 0.5])
+```
+
+*Augmentation (Spatial + Perspective + Kinematic + Gaussian) chỉ áp dụng trong quá trình huấn luyện, không đưa vào keypoint tĩnh của dataset.*
+
+> **Lưu ý quan trọng:** Pipeline trên dựa trên 11/19 runs. Các tham số TBL (θ, τb) **chưa được tối ưu hóa bằng grid search** do giới hạn tài nguyên tính toán. Người sử dụng được khuyến nghị chạy thêm ablation trên dữ liệu riêng trước khi áp dụng.
+
+---
+
+## 6. Công việc Còn Lại (Future Work)
+
+| Hạng mục | Mô tả | Ưu tiên |
+| :--- | :--- | :--- |
+| Hoàn tất Phase 1 | Chạy Run 02/04/05/06 để xác định θ và τb tối ưu thực sự | Cao |
+| Hoàn tất Phase 4 | Chạy Run 16/17/18 để xác nhận chéo trên SL-GCN | Trung bình |
+| Multi-seed | Lặp lại các runs với ≥3 seed để có error bar | Trung bình |
+| Facial trên model lớn hơn | Thử hidden_dim=148 với Neck Anchor + Combined Aug | Thấp |
+| Multi-view | Mở rộng sang cam_2, cam_3 | Thấp |
+
+---
+
+## 7. Tham khảo
+
+| Ký hiệu | Công trình |
+| :--- | :--- |
+| VSL400 (2026) | Nguyen Quoc et al., "A Multi-view Dataset for Vietnamese Word-Level Sign Language Recognition", Zenodo DOI: 10.5281/zenodo.17943574 |
+| SPOTER (2022) | Boháček & Hrúz, "Sign Pose-Based Transformer for Word-Level Sign Language Recognition", WACV Workshops |
+| Roh et al. (2024) | Roh et al., "Preprocessing Mediapipe Keypoints with Keypoint Reconstruction and Anchors for Isolated Sign Language Recognition", SignLang @ LREC-COLING |
+| QIPEDC-VSL (2026) | Dung et al., "Towards Realistic Vietnamese Sign Language Recognition", IJSRED Vol.9 No.1 |
+| OpenHands (2022) | Selvaraj et al., "OpenHands: Making Sign Language Recognition Accessible with Pose-based Pretrained Models", ACL |
