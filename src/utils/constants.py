@@ -6,7 +6,6 @@ VIDEO_EXTENSIONS = (".mp4", ".avi", ".mov", ".mkv")
 POSE_BASED_MODELS = (
     "spoter",
     "sl_gcn",
-    "dsta_slr"
 )
 
 MODELS = POSE_BASED_MODELS

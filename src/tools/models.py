@@ -153,10 +153,6 @@ def load_pose_model_for_training(
             config_class = SLGCNConfig
             processor_class = SLGCNFeatureExtractor
             model_class = SLGCNForGraphClassification
-        elif model_config.arch == "dsta_slr":
-            config_class = DSTASLRConfig
-            processor_class = DSTASLRFeatureExtractor
-            model_class = DSTASLRForGraphClassification
         else:
             logging.error(f"Model {model_config.arch} is not supported")
             exit(1)
@@ -329,7 +325,7 @@ def load_pipeline(
                 device=inference_config.device,
             )
 
-        if model_config.arch in ["sl_gcn", "dsta_slr"]:
+        if model_config.arch == "sl_gcn":
             return SLGCNGraphClassificationPipeline(
                 model=model,
                 feature_extractor=processor,
@@ -366,7 +362,7 @@ def get_input_shape(
                 processor.num_points,
                 processor.in_channels,
             )
-        elif arch in ["sl_gcn", "dsta_slr"]:
+        elif arch == "sl_gcn":
             return (
                 batch_size,
                 processor.in_channels,

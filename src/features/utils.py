@@ -38,7 +38,7 @@ def get_pose_transforms(
 ) -> Compose:
     if processor.arch == "spoter":
         return _get_spoter_transforms(split, processor, transform_config)
-    if processor.arch in ["sl_gcn", "dsta_slr"]:
+    if processor.arch == "sl_gcn":
         return _get_sl_gcn_transforms(split, processor, transform_config)
     return Compose([])
 

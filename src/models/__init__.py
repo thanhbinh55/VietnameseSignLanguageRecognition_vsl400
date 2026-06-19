@@ -28,8 +28,3 @@ from .spoter import (
     SPOTERFeatureExtractor,
     SPOTERForGraphClassification
 )
-# from .dsta_slr import (
-#     DSTASLRConfig,
-#     DSTASLRFeatureExtractor,
-#     DSTASLRForGraphClassification
-# )
