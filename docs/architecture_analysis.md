@@ -24,18 +24,13 @@
 ## 1. Cấu trúc Thư mục
 
 ```text
-vsl-keypoint-pipeline/
+VietnameseSignLanguageRecognition/
 │
 ├── docs/                          ← Tài liệu nghiên cứu và kỹ thuật
 ├── requirements.txt
 ├── Makefile
-├── generate_ablation_configs.py   ← Tạo 19 file YAML cấu hình ablation
-├── generate_ablation_report.py    ← Tổng hợp kết quả ablation thành báo cáo
-├── run_ablation.py                ← Entrypoint chạy một run ablation cụ thể
 │
-├── experiments/
-│   ├── ablation/                  ← Checkpoint mô hình từng ablation run
-│   └── ablation_results/          ← File JSON kết quả từng run (dùng để tạo report)
+├── experiments/                   ← Checkpoint mô hình sau huấn luyện
 │
 └── src/                           ← Toàn bộ mã nguồn
     │
@@ -51,8 +46,7 @@ vsl-keypoint-pipeline/
     │   ├── arguments.py           ← Dataclass định nghĩa tất cả tham số
     │   ├── training/              ← YAML cấu hình huấn luyện
     │   ├── evaluation/            ← YAML cấu hình đánh giá
-    │   ├── inference/             ← YAML cấu hình suy diễn
-    │   └── ablation/              ← YAML tự động sinh cho 19 ablation runs
+    │   └── inference/             ← YAML cấu hình suy diễn
     │
     ├── data/                      ← Thuật toán tiền xử lý video
     │   ├── temporal_boundary_localization.py  ← Thuật toán TBL (Algorithm 1)
@@ -75,17 +69,17 @@ vsl-keypoint-pipeline/
     │       ├── spoter.py          ← Rotate, Shear, Perspective, ArmJointRotate, Noise
     │       └── sl_gcn.py          ← Rotation, shear, scale cho skeleton graph
     │
-    ├── models/                    ← Kiến trúc mạng
+    ├── models/                    ← Kiến trúc mạng (pose-based)
     │   ├── spoter/
     │   │   ├── configuration.py   ← SPOTERConfig
     │   │   └── modelling.py       ← SPOTER Transformer + HuggingFace wrapper
-    │   ├── sl_gcn/                ← SL-GCN (Spatial-Temporal GCN)
-    │   └── videomae/              ← VideoMAE (RGB — fine-tuned từ Kinetics)
+    │   └── sl_gcn/                ← SL-GCN (Spatial-Temporal GCN)
+    │       ├── configuration.py   ← SLGCNConfig
+    │       └── modelling.py       ← SL-GCN + HuggingFace wrapper
     │
     ├── pipelines/                 ← Đóng gói suy diễn chuẩn transformers.Pipeline
     │   ├── spoter_graph_classification.py
-    │   ├── sl_gcn_graph_classification.py
-    │   └── video_classification.py
+    │   └── sl_gcn_graph_classification.py
     │
     ├── tools/                     ← Cầu nối nạp mô hình & dataset
     │   ├── models.py              ← load_model(), load_pipeline()
@@ -192,7 +186,7 @@ Pipeline tiền xử lý video đã chạy trước khi công bố dataset. Ngư
 | `τmin` (min duration) | 0.67s | Độ dài tối thiểu clip sau cắt |
 | `crop` | 1080×1080 | Kích thước chuẩn đầu ra |
 
-> **Ghi chú:** Các tham số TBL chưa được tối ưu hóa bằng grid search đầy đủ. Ablation study (Phase 1) mới hoàn tất run θ=160°. Xem chi tiết tại [ablation_study_report.md](ablation_study_report.md).
+> **Ghi chú:** Các tham số TBL chưa được tối ưu hóa bằng grid search đầy đủ. Kết quả ablation cho thấy θ=160° phù hợp với VSL-400. Xem chi tiết tại [ablation_study_report.md](ablation_study_report.md).
 
 ---
 
@@ -278,6 +272,8 @@ PoseExtract  →  SLGCNAugment (train only)  →  SLGCNJointSelect (27 khớp)
 ---
 
 ## 7. Module 5 — Kiến trúc Mô hình
+
+Pipeline hiện tại hỗ trợ **2 kiến trúc pose-based**: SPOTER và SL-GCN. Pipeline không sử dụng RGB input.
 
 ### 7.1 SPOTER
 
@@ -391,20 +387,19 @@ Mã nguồn SL-GCN nằm tại `src/models/sl_gcn/`. Tải cục bộ với `tru
 ```
 [M1: TBL/BGSP] → [M2: Keypoint] → [M3: Dataset Loading]
                                           │
-                          ┌───────────────┼───────────────┐
-                          ▼               ▼               ▼
-                    [M4A SPOTER]    [M4B SL-GCN]    [M4C RGB*]
+                          ┌───────────────┘
+                          ▼               ▼
+                    [M4A SPOTER]    [M4B SL-GCN]
                           │               │
                           ▼               ▼
                     [M5: SPOTER]    [M5: SL-GCN]
-                          │
-                          ▼
+                          │               │
+                          └───────┬───────┘
+                                  ▼
                     [M6: Training] → [M7: Evaluation]
-                          │
-                          └──────────────────────► [M8: Inference/Demo]
+                                  │
+                                  └──────► [M8: Inference/Demo]
 ```
-
-*\* Module RGB (VideoMAE) có trong codebase nhưng không dùng trong ablation study chính.*
 
 ### Điểm mở rộng chính
 
@@ -420,8 +415,8 @@ Mã nguồn SL-GCN nằm tại `src/models/sl_gcn/`. Tải cục bộ với `tru
 
 1. **Lựa chọn transform pipeline**: [`features/utils.py`](src/features/utils.py) → `get_pose_transforms()` → `_get_spoter_transforms()` / `_get_sl_gcn_transforms()`
 2. **Khởi tạo mô hình**: [`tools/models.py`](src/tools/models.py) → `load_model()`
-3. **Chọn collate function**: [`train.py`](src/train.py) tự chọn `rgb_collate_fn` / `pose_collate_fn` theo modality
-4. **Danh sách model pose-based**: [`utils/constants.py`](src/utils/constants.py) → `POSE_BASED_MODELS`
+3. **Collate function**: [`tools/features.py`](src/tools/features.py) → `pose_collate_fn` (dùng chung cho cả SPOTER và SL-GCN)
+4. **Danh sách model được hỗ trợ**: [`utils/constants.py`](src/utils/constants.py) → `POSE_BASED_MODELS = ("spoter", "sl_gcn")`
 
 ---
 
