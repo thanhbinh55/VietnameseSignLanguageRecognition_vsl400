@@ -108,15 +108,15 @@ Pipeline xử lý dữ liệu qua 8 module theo thứ tự sau:
 
 ```mermaid
 flowchart LR
-    A["🎥 Video thô"]
-    B["⚙️ TBL + BGSP\nM1"]
-    C["🦴 Keypoint\nM2 · .pose"]
-    D["📋 Dataset Split\nM3 · signer-disjoint"]
-    E["🔄 Transforms\nM4A/B"]
-    F["🤖 Model\nM5"]
-    G["🏋️ Train\nM6"]
-    H["📊 Evaluate\nM7"]
-    I["🔍 Inference\nM8"]
+    A["Video thô"]
+    B["TBL + BGSP\nM1"]
+    C["Keypoint\nM2 · .pose"]
+    D["Dataset Split\nM3 · signer-disjoint"]
+    E["Transforms\nM4A/B"]
+    F["Model\nM5"]
+    G["Train\nM6"]
+    H["Evaluate\nM7"]
+    I["Inference\nM8"]
 
     A --> B --> C --> D --> E --> F --> G --> H
     G --> I
@@ -136,12 +136,12 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    S1["📖 PoseExtract\n.pose → Pose"]
-    S2["🔄 PoseInterpolate\nlấp đầy keypoint thiếu"]
-    S3["✂️ JointSelect\n54 khớp"]
-    S4{{"🎲 Augment\ntrain only"}}
-    S5["📏 Neck Anchor Norm\n+ Hand Wrist Norm"]
-    S6["📐 Pad 96f + Shift\n→ 96×54×2"]
+    S1["PoseExtract\n.pose → Pose"]
+    S2["PoseInterpolate\nlấp đầy keypoint thiếu"]
+    S3["JointSelect\n54 khớp"]
+    S4{{"Augment\ntrain only"}}
+    S5["Neck Anchor Norm\n+ Hand Wrist Norm"]
+    S6["Pad 96f + Shift\n→ 96×54×2"]
 
     S1 --> S2 --> S3 --> S4 --> S5 --> S6
 
@@ -152,13 +152,13 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    G1["📖 PoseExtract\n.pose → Pose"]
-    G2{{"🎲 Augment\ntrain only"}}
-    G3["✂️ JointSelect\n27 khớp"]
-    G4["📐 Pad 150f\n→ C×T×V×M"]
-    G5[/"🦴 Bone Stream\noptional"/]
-    G6[/"⚡ Motion Stream\noptional"/]
-    G7["📏 Normalize"]
+    G1["PoseExtract\n.pose → Pose"]
+    G2{{"Augment\ntrain only"}}
+    G3["JointSelect\n27 khớp"]
+    G4["Pad 150f\n→ C×T×V×M"]
+    G5[/"Bone Stream\noptional"/]
+    G6[/"Motion Stream\noptional"/]
+    G7["Normalize"]
 
     G1 --> G2 --> G3 --> G4 --> G5 --> G7
     G4 --> G6 --> G7
