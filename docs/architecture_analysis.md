@@ -185,10 +185,10 @@ Pipeline tiền xử lý video đã chạy trước khi công bố dataset. Ngư
 
 | Thành phần | File | Hàm chính |
 | :--- | :--- | :--- |
-| Phát hiện biên thời gian ký hiệu (TBL) | [temporal_boundary_localization.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/data/temporal_boundary_localization.py) | `process_getting_cut_time()` |
-| Tính góc khuỷu tay | [temporal_boundary_localization.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/data/temporal_boundary_localization.py) | `calculate_angle(a, b, c)` |
-| State machine trạng thái tay | [utils.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/data/utils.py) | Class `Arm`, `ok_to_get_frame()` |
-| Cắt & crop video theo biên (BGSP) | [boundary_segmentation_pruning.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/data/boundary_segmentation_pruning.py) | `cut_crop_video()` |
+| Phát hiện biên thời gian ký hiệu (TBL) | [temporal_boundary_localization.py](src/data/temporal_boundary_localization.py) | `process_getting_cut_time()` |
+| Tính góc khuỷu tay | [temporal_boundary_localization.py](src/data/temporal_boundary_localization.py) | `calculate_angle(a, b, c)` |
+| State machine trạng thái tay | [utils.py](src/data/utils.py) | Class `Arm`, `ok_to_get_frame()` |
+| Cắt & crop video theo biên (BGSP) | [boundary_segmentation_pruning.py](src/data/boundary_segmentation_pruning.py) | `cut_crop_video()` |
 
 **Tham số TBL đã sử dụng trong VSL400:**
 
@@ -209,9 +209,9 @@ Pipeline tiền xử lý video đã chạy trước khi công bố dataset. Ngư
 
 | Thành phần | File | Hàm chính |
 | :--- | :--- | :--- |
-| Chuyển 1 video → file `.pose` | [extract_keypoints.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/extract_keypoints.py) | `process_video(video_path, overwrite)` |
-| Xử lý batch song song | [extract_keypoints.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/extract_keypoints.py) | `main()` sử dụng `ThreadPoolExecutor` |
-| Xuất dataset keypoint đã xử lý | [preprocess_dataset.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/preprocess_dataset.py) | `main()` → xuất file `.npy` |
+| Chuyển 1 video → file `.pose` | [extract_keypoints.py](src/extract_keypoints.py) | `process_video(video_path, overwrite)` |
+| Xử lý batch song song | [extract_keypoints.py](src/extract_keypoints.py) | `main()` sử dụng `ThreadPoolExecutor` |
+| Xuất dataset keypoint đã xử lý | [preprocess_dataset.py](src/preprocess_dataset.py) | `main()` → xuất file `.npy` |
 
 File `.pose` chứa tọa độ đầy đủ MediaPipe Holistic: **33 pose keypoints + 21 tay trái + 21 tay phải + 468 face landmarks** (có confidence score cho mỗi điểm).
 
@@ -221,10 +221,10 @@ File `.pose` chứa tọa độ đầy đủ MediaPipe Holistic: **33 pose keypo
 
 | Thành phần | File | Hàm chính |
 | :--- | :--- | :--- |
-| Đọc metadata JSON & tạo DataFrame | [visl_400.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/features/visl_400.py) | `load_visl_400(data_dict, gloss2id_file)` |
-| Chia train/val/test (signer-disjoint) | [visl_400.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/features/visl_400.py) | Logic dòng 66–131 |
-| Nạp file từ đĩa | [base_dataset.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/features/base_dataset.py) | `_load_from_local()` |
-| API gọi từ train.py | [features.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/tools/features.py) | `load_dataset(data_config)` |
+| Đọc metadata JSON & tạo DataFrame | [visl_400.py](src/features/visl_400.py) | `load_visl_400(data_dict, gloss2id_file)` |
+| Chia train/val/test (signer-disjoint) | [visl_400.py](src/features/visl_400.py) | Logic dòng 66–131 |
+| Nạp file từ đĩa | [base_dataset.py](src/features/base_dataset.py) | `_load_from_local()` |
+| API gọi từ train.py | [features.py](src/tools/features.py) | `load_dataset(data_config)` |
 
 **Cơ chế chia dữ liệu (Signer-disjoint):** Signer trong validation và test không xuất hiện trong train. Đây là protocol kiểm tra khả năng tổng quát hóa sang người ký chưa thấy trong huấn luyện.
 
@@ -250,23 +250,23 @@ PoseExtract  →  PoseInterpolate  →  SPOTERJointSelect
 
 | Thành phần | File | Mô tả |
 | :--- | :--- | :--- |
-| `PoseExtract` | [transforms/base.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/features/transforms/base.py) | Đọc file `.pose` thành Pose object |
-| `PoseInterpolate` | [transforms/base.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/features/transforms/base.py) | Nội suy tuyến tính lấp đầy keypoint thiếu (confidence=0) |
-| `SPOTERJointSelect` | [transforms/spoter.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/features/transforms/spoter.py) | Trích 54 khớp (12 body + 42 hand) — hoặc 74 nếu dùng face |
-| `SPOTERSingleBodyDictNormalize` | [transforms/spoter.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/features/transforms/spoter.py) | Chuẩn hóa cơ thể theo điểm neo (Neck / Nose / Box) |
-| `SPOTERSingleHandDictNormalize` | [transforms/spoter.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/features/transforms/spoter.py) | Chuẩn hóa bàn tay về gốc cổ tay |
-| `SPOTERPad` | [transforms/spoter.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/features/transforms/spoter.py) | Cycle-pad hoặc truncate về 96 frames |
-| `SPOTERShift` | [transforms/spoter.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/features/transforms/spoter.py) | Dịch tọa độ `[0,1]` → `[-0.5, 0.5]` |
+| `PoseExtract` | [transforms/base.py](src/features/transforms/base.py) | Đọc file `.pose` thành Pose object |
+| `PoseInterpolate` | [transforms/base.py](src/features/transforms/base.py) | Nội suy tuyến tính lấp đầy keypoint thiếu (confidence=0) |
+| `SPOTERJointSelect` | [transforms/spoter.py](src/features/transforms/spoter.py) | Trích 54 khớp (12 body + 42 hand) — hoặc 74 nếu dùng face |
+| `SPOTERSingleBodyDictNormalize` | [transforms/spoter.py](src/features/transforms/spoter.py) | Chuẩn hóa cơ thể theo điểm neo (Neck / Nose / Box) |
+| `SPOTERSingleHandDictNormalize` | [transforms/spoter.py](src/features/transforms/spoter.py) | Chuẩn hóa bàn tay về gốc cổ tay |
+| `SPOTERPad` | [transforms/spoter.py](src/features/transforms/spoter.py) | Cycle-pad hoặc truncate về 96 frames |
+| `SPOTERShift` | [transforms/spoter.py](src/features/transforms/spoter.py) | Dịch tọa độ `[0,1]` → `[-0.5, 0.5]` |
 
 **Augmentation (chỉ dùng khi train):**
 
 | Kỹ thuật | Tham số | File |
 | :--- | :--- | :--- |
-| Xoay ngẫu nhiên | ±13°, p=0.3 | [augmentations/spoter.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/features/augmentations/spoter.py) |
-| Squeeze ngang (Shear) | ≤15%, mode="squeeze" | [augmentations/spoter.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/features/augmentations/spoter.py) |
-| Perspective Skew | hệ số 0.10, mode="perspective" | [augmentations/spoter.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/features/augmentations/spoter.py) |
-| Xoay khớp tay (ArmJointRotate) | ±4°, p=0.3 | [augmentations/spoter.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/features/augmentations/spoter.py) |
-| Gaussian Noise | std=0.001 | [augmentations/spoter.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/features/augmentations/spoter.py) |
+| Xoay ngẫu nhiên | ±13°, p=0.3 | [augmentations/spoter.py](src/features/augmentations/spoter.py) |
+| Squeeze ngang (Shear) | ≤15%, mode="squeeze" | [augmentations/spoter.py](src/features/augmentations/spoter.py) |
+| Perspective Skew | hệ số 0.10, mode="perspective" | [augmentations/spoter.py](src/features/augmentations/spoter.py) |
+| Xoay khớp tay (ArmJointRotate) | ±4°, p=0.3 | [augmentations/spoter.py](src/features/augmentations/spoter.py) |
+| Gaussian Noise | std=0.001 | [augmentations/spoter.py](src/features/augmentations/spoter.py) |
 
 ### 6.2 SL-GCN Transforms
 
@@ -278,11 +278,11 @@ PoseExtract  →  SLGCNAugment (train only)  →  SLGCNJointSelect (27 khớp)
 
 | Thành phần | File | Mô tả |
 | :--- | :--- | :--- |
-| `SLGCNJointSelect` | [transforms/sl_gcn.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/features/transforms/sl_gcn.py) | 27 khớp (7 body + 10L + 10R hand) |
-| `SLGCNPad` | [transforms/sl_gcn.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/features/transforms/sl_gcn.py) | Pad về 150 frames → tensor `(C,T,V,M)` |
-| `SLGCNBoneStream` | [transforms/sl_gcn.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/features/transforms/sl_gcn.py) | Vector liên kết xương `end - start` |
-| `SLGCNMotionStream` | [transforms/sl_gcn.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/features/transforms/sl_gcn.py) | Tốc độ dịch chuyển `joint[t+1] - joint[t]` |
-| `SLGCNNormalize` | [transforms/sl_gcn.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/features/transforms/sl_gcn.py) | Center subtraction |
+| `SLGCNJointSelect` | [transforms/sl_gcn.py](src/features/transforms/sl_gcn.py) | 27 khớp (7 body + 10L + 10R hand) |
+| `SLGCNPad` | [transforms/sl_gcn.py](src/features/transforms/sl_gcn.py) | Pad về 150 frames → tensor `(C,T,V,M)` |
+| `SLGCNBoneStream` | [transforms/sl_gcn.py](src/features/transforms/sl_gcn.py) | Vector liên kết xương `end - start` |
+| `SLGCNMotionStream` | [transforms/sl_gcn.py](src/features/transforms/sl_gcn.py) | Tốc độ dịch chuyển `joint[t+1] - joint[t]` |
+| `SLGCNNormalize` | [transforms/sl_gcn.py](src/features/transforms/sl_gcn.py) | Center subtraction |
 
 ---
 
@@ -299,7 +299,7 @@ PoseExtract  →  SLGCNAugment (train only)  →  SLGCNJointSelect (27 khớp)
 - Input shape: `(B, 96, 54, 2)`
 
 **Tùy chỉnh trong dự án này:**
-- **Loại bỏ Self-Attention trong Decoder Layer**: Giảm overfitting trên đặc trưng keypoint có tính lặp lại cao. Chi tiết tại [modelling.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/models/spoter/modelling.py) — `SPOTERTransformerDecoderLayer.forward()`.
+- **Loại bỏ Self-Attention trong Decoder Layer**: Giảm overfitting trên đặc trưng keypoint có tính lặp lại cao. Chi tiết tại [modelling.py](src/models/spoter/modelling.py) — `SPOTERTransformerDecoderLayer.forward()`.
 - **Đóng gói qua `PreTrainedModel`**: Tích hợp với HuggingFace Trainer API.
 - **FeatureExtractor động**: `num_frames` và `num_points` được lưu cùng checkpoint.
 
@@ -307,7 +307,7 @@ PoseExtract  →  SLGCNAugment (train only)  →  SLGCNJointSelect (27 khớp)
 
 | Kỹ thuật | Mô tả | Triển khai |
 | :--- | :--- | :--- |
-| Keypoint Interpolation | Nội suy tuyến tính lấp đầy tọa độ `(0,0)` có confidence thấp | `PoseInterpolate` — [transforms/base.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/features/transforms/base.py) |
+| Keypoint Interpolation | Nội suy tuyến tính lấp đầy tọa độ `(0,0)` có confidence thấp | `PoseInterpolate` — [transforms/base.py](src/features/transforms/base.py) |
 | Neck Anchor Normalization | Gốc tọa độ về Cổ, scale theo khoảng cách Cổ–Mũi | `SPOTERSingleBodyDictNormalize(anchor="neck")` |
 | Wrist Anchor (Hand) | Tọa độ bàn tay về gốc cổ tay | `SPOTERSingleHandDictNormalize` |
 | 20 facial landmarks | Trích lọc vùng chân mày, mắt, môi từ 468 face mesh | `SPOTERJointSelect` với `face_landmarks=True` |
@@ -327,9 +327,9 @@ Mã nguồn SL-GCN nằm tại `src/models/sl_gcn/`. Tải cục bộ với `tru
 
 | Thành phần | File | Mô tả |
 | :--- | :--- | :--- |
-| Entrypoint huấn luyện | [train.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/train.py) | `main(args)` — gọi HuggingFace Trainer |
-| Resume từ checkpoint | [train.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/train.py) | `train_with_checkpoint_compat(trainer, ckpt)` |
-| Tính FLOPs & params | [metrics.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/utils/metrics.py) | `compute_flops_and_params(model, inputs)` |
+| Entrypoint huấn luyện | [train.py](src/train.py) | `main(args)` — gọi HuggingFace Trainer |
+| Resume từ checkpoint | [train.py](src/train.py) | `train_with_checkpoint_compat(trainer, ckpt)` |
+| Tính FLOPs & params | [metrics.py](src/utils/metrics.py) | `compute_flops_and_params(model, inputs)` |
 
 **Cấu hình mặc định (ablation study):**
 
@@ -347,10 +347,10 @@ Mã nguồn SL-GCN nằm tại `src/models/sl_gcn/`. Tải cục bộ với `tru
 
 | Thành phần | File | Mô tả |
 | :--- | :--- | :--- |
-| Tính metrics | [metrics.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/utils/metrics.py) | Accuracy, Macro F1, Recall, Precision |
-| Top-K Accuracy | [metrics.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/utils/metrics.py) | `top_k_accuracy(eval_pred, k=5)` |
-| Lưu kết quả | [metrics.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/utils/metrics.py) | `save_evaluation_results()` → `results.json` + confusion matrix |
-| Entrypoint đánh giá | [evaluate_model.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/evaluate_model.py) | `main(args)` |
+| Tính metrics | [metrics.py](src/utils/metrics.py) | Accuracy, Macro F1, Recall, Precision |
+| Top-K Accuracy | [metrics.py](src/utils/metrics.py) | `top_k_accuracy(eval_pred, k=5)` |
+| Lưu kết quả | [metrics.py](src/utils/metrics.py) | `save_evaluation_results()` → `results.json` + confusion matrix |
+| Entrypoint đánh giá | [evaluate_model.py](src/evaluate_model.py) | `main(args)` |
 
 ---
 
@@ -358,11 +358,11 @@ Mã nguồn SL-GCN nằm tại `src/models/sl_gcn/`. Tải cục bộ với `tru
 
 | Thành phần | File | Mô tả |
 | :--- | :--- | :--- |
-| Nạp pipeline suy diễn | [tools/models.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/tools/models.py) | `load_pipeline(model_config, inference_config)` |
-| Pipeline SPOTER | [pipelines/spoter_graph_classification.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/pipelines/spoter_graph_classification.py) | `SPOTERGraphClassificationPipeline` |
-| Pipeline SL-GCN | [pipelines/sl_gcn_graph_classification.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/pipelines/sl_gcn_graph_classification.py) | `SLGCNGraphClassificationPipeline` |
-| Suy diễn offline (video/file) | [inference.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/inference.py) | `inference(config, pipeline)` |
-| Demo webcam thời gian thực | [demo_web.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/demo_web.py) | Class `RealtimeRecognizer`, HTTP handler |
+| Nạp pipeline suy diễn | [tools/models.py](src/tools/models.py) | `load_pipeline(model_config, inference_config)` |
+| Pipeline SPOTER | [pipelines/spoter_graph_classification.py](src/pipelines/spoter_graph_classification.py) | `SPOTERGraphClassificationPipeline` |
+| Pipeline SL-GCN | [pipelines/sl_gcn_graph_classification.py](src/pipelines/sl_gcn_graph_classification.py) | `SLGCNGraphClassificationPipeline` |
+| Suy diễn offline (video/file) | [inference.py](src/inference.py) | `inference(config, pipeline)` |
+| Demo webcam thời gian thực | [demo_web.py](src/demo_web.py) | Class `RealtimeRecognizer`, HTTP handler |
 
 ---
 
@@ -419,18 +419,18 @@ Mã nguồn SL-GCN nằm tại `src/models/sl_gcn/`. Tải cục bộ với `tru
 
 | Muốn thêm... | Cần làm |
 | :--- | :--- |
-| Dataset mới | Kế thừa [BaseDataset](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/features/base_dataset.py), implement `_load_from_local()` |
-| Kiến trúc mô hình mới | Thêm class vào `src/models/`, đăng ký trong [tools/models.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/tools/models.py) `load_model()` |
-| Transform mới | Thêm class vào `src/features/transforms/`, đăng ký trong [features/utils.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/features/utils.py) |
-| Metric mới | Thêm vào [utils/metrics.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/utils/metrics.py) `compute_metrics()` |
-| Pipeline suy diễn mới | Kế thừa `transformers.Pipeline`, đăng ký trong [tools/models.py](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/tools/models.py) `load_pipeline()` |
+| Dataset mới | Kế thừa [BaseDataset](src/features/base_dataset.py), implement `_load_from_local()` |
+| Kiến trúc mô hình mới | Thêm class vào `src/models/`, đăng ký trong [tools/models.py](src/tools/models.py) `load_model()` |
+| Transform mới | Thêm class vào `src/features/transforms/`, đăng ký trong [features/utils.py](src/features/utils.py) |
+| Metric mới | Thêm vào [utils/metrics.py](src/utils/metrics.py) `compute_metrics()` |
+| Pipeline suy diễn mới | Kế thừa `transformers.Pipeline`, đăng ký trong [tools/models.py](src/tools/models.py) `load_pipeline()` |
 
 ### Điểm kết nối then chốt (Integration Points)
 
-1. **Lựa chọn transform pipeline**: [`features/utils.py`](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/features/utils.py) → `get_pose_transforms()` → `_get_spoter_transforms()` / `_get_sl_gcn_transforms()`
-2. **Khởi tạo mô hình**: [`tools/models.py`](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/tools/models.py) → `load_model()`
-3. **Chọn collate function**: [`train.py`](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/train.py) tự chọn `rgb_collate_fn` / `pose_collate_fn` theo modality
-4. **Danh sách model pose-based**: [`utils/constants.py`](file:///Users/ngovietthanhbinh/Project/VSL_400/VietnameseSignLanguageRecognition/src/utils/constants.py) → `POSE_BASED_MODELS`
+1. **Lựa chọn transform pipeline**: [`features/utils.py`](src/features/utils.py) → `get_pose_transforms()` → `_get_spoter_transforms()` / `_get_sl_gcn_transforms()`
+2. **Khởi tạo mô hình**: [`tools/models.py`](src/tools/models.py) → `load_model()`
+3. **Chọn collate function**: [`train.py`](src/train.py) tự chọn `rgb_collate_fn` / `pose_collate_fn` theo modality
+4. **Danh sách model pose-based**: [`utils/constants.py`](src/utils/constants.py) → `POSE_BASED_MODELS`
 
 ---
 
