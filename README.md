@@ -150,7 +150,7 @@ python src/evaluate_model.py --config_path src/configs/evaluation/spoter.yaml
 ### Demo với Webcam / Interface Web
 
 ```bash
-python src/demo_web.py --config_path src/configs/inference/spoter_m4_cam1.yaml
+python src/demo_web.py --config_path src/configs/inference/spoter.yaml
 ```
 
 > [!TIP]

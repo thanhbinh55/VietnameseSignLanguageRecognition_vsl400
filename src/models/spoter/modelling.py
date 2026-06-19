@@ -130,6 +130,9 @@ class SPOTERForGraphClassification(PreTrainedModel):
                     state_dict[key[6:]] = state_dict.pop(key)
             self.model.load_state_dict(state_dict)
 
+        # Initialize weights and apply final processing
+        self.post_init()
+
     def forward(
         self,
         poses: torch.Tensor,

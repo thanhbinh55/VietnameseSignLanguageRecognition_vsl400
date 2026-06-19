@@ -21,13 +21,13 @@ requirements:
 ## Run local webcam web demo
 .PHONY: demo-web
 demo-web:
-	.venv/bin/python src/demo_web.py --config_path src/configs/inference/spoter_m4_cam1.yaml
+	.venv/bin/python src/demo_web.py --config_path src/configs/inference/spoter.yaml
 
 
 ## Run OpenCV realtime inference
 .PHONY: demo-cli
 demo-cli:
-	.venv/bin/python src/inference.py --config_path src/configs/inference/spoter_m4_cam1.yaml
+	.venv/bin/python src/inference.py --config_path src/configs/inference/spoter.yaml
 
 
 

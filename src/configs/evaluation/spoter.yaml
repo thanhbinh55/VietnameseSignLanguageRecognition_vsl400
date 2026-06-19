@@ -9,5 +9,5 @@ data:
   debug: False
 evaluation:
   arch: spoter
-  pretrained: experiments/spoter_m4_cam1
+  pretrained: experiments/spoter_vsl400
   eval_set: test

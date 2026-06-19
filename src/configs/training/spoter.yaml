@@ -19,8 +19,8 @@ model:
   num_frames: 96
   hidden_dim: 108
 training:
-  output_dir: experiments/spoter_m4_cam1
-  run_name: spoter_m4_cam1
+  output_dir: experiments/spoter_vsl400
+  run_name: spoter_vsl400
   learning_rate: 0.0005
   weight_decay: 0.01
   warmup_ratio: 0.05
