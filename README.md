@@ -227,7 +227,18 @@ Pipeline này được xây dựng dựa trên:
   booktitle = {WACV Workshops},
   year      = {2022}
 }
+
+@inproceedings{yan2018spatial,
+  author    = {Sijie Yan and Yuanjun Xiong and Dahua Lin},
+  title     = {Spatial Temporal Graph Convolutional Networks for Skeleton-Based Action Recognition},
+  booktitle = {AAAI},
+  year      = {2018}
+}
 ```
+
+Ngoài ra, dự án còn tích hợp và sử dụng các thư viện nguồn mở:
+- **pose-format** & **video-to-pose** ([Sign Language Processing](https://github.com/sign-language-processing)): Các công cụ tiêu chuẩn để đọc/ghi, chuyển đổi và chuẩn hóa định dạng dữ liệu pose của ngôn ngữ ký hiệu.
+- **Google MediaPipe (Pose & Holistic)**: Trích xuất tọa độ khớp xương cơ thể và bàn tay thời gian thực.
 
 ---
 

@@ -39,3 +39,14 @@ src/visualization.py
 generate_ablation_configs.py
 generate_ablation_report.py
 run_ablation.py
+
+# Ablation study artifacts (auto-generated, not part of pipeline)
+src/configs/ablation/
+docs/ablation_study_report.md
+docs/research_ablation_plan.md
+
+# VideoMAE inference config (model removed from pipeline)
+src/configs/inference/videomae_s.yaml
+
+# Matplotlib Cache
+.matplotlib_cache/
