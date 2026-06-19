@@ -104,77 +104,68 @@ vsl-keypoint-pipeline/
 
 Pipeline xử lý dữ liệu qua 8 module theo thứ tự sau:
 
+### Tổng quan (8 module)
+
 ```mermaid
-flowchart TD
-    subgraph M1["📦 MODULE 1 — Tiền xử lý Video"]
-        A["🎥 Video thô\n(1920×1080, 30fps)"]
-        B["⚙️ TBL\ntemporal_boundary_localization.py"]
-        C["✂️ BGSP\nboundary_segmentation_pruning.py"]
-        D["🎬 Video ngắn\n1080×1080, avg 2.61s"]
-        A --> B --> C --> D
-    end
+flowchart LR
+    A["🎥 Video thô"]
+    B["⚙️ TBL + BGSP\nM1"]
+    C["🦴 Keypoint\nM2 · .pose"]
+    D["📋 Dataset Split\nM3 · signer-disjoint"]
+    E["🔄 Transforms\nM4A/B"]
+    F["🤖 Model\nM5"]
+    G["🏋️ Train\nM6"]
+    H["📊 Evaluate\nM7"]
+    I["🔍 Inference\nM8"]
 
-    subgraph M2["📦 MODULE 2 — Trích xuất Keypoint"]
-        E["🦴 extract_keypoints.py\nMediaPipe Holistic (parallel)"]
-        F["📐 File .pose\n(pose + 2 tay + face landmarks)"]
-        D --> E --> F
-    end
+    A --> B --> C --> D --> E --> F --> G --> H
+    G --> I
 
-    subgraph M3["📦 MODULE 3 — Dataset Loading"]
-        G["📋 cam_N.json + gloss.csv"]
-        H["🏗️ load_visl_400()\nSigner-disjoint split (seed=42)"]
-        I["📊 train / val / test splits"]
-        F & G --> H --> I
-    end
+    style A fill:#374151,color:#f9fafb
+    style B fill:#1e3a5f,color:#f9fafb
+    style C fill:#1e3a5f,color:#f9fafb
+    style D fill:#1e4d3b,color:#f9fafb
+    style E fill:#4a1942,color:#f9fafb
+    style F fill:#4a1942,color:#f9fafb
+    style G fill:#4a2500,color:#f9fafb
+    style H fill:#4a2500,color:#f9fafb
+    style I fill:#374151,color:#f9fafb
+```
 
-    subgraph M4A["📦 MODULE 4A — SPOTER Transforms"]
-        J1["PoseExtract → PoseInterpolate"]
-        J2["SPOTERJointSelect (54 khớp)"]
-        J3["SPOTERRandomAugment ⚠️ train only"]
-        J4["Neck/Nose/Box Anchor Normalize"]
-        J5["SPOTERPad (96 frames) → Shift"]
-        J1-->J2-->J3-->J4-->J5
-    end
+### SPOTER Transform Pipeline (M4A)
 
-    subgraph M4B["📦 MODULE 4B — SL-GCN Transforms"]
-        K1["PoseExtract → SLGCNAugment ⚠️ train only"]
-        K2["SLGCNJointSelect (27 khớp)"]
-        K3["SLGCNPad (150 frames)"]
-        K4["BoneStream + MotionStream (optional)"]
-        K5["SLGCNNormalize"]
-        K1-->K2-->K3-->K4-->K5
-    end
+```mermaid
+flowchart LR
+    S1["📖 PoseExtract\n.pose → Pose"]
+    S2["🔄 PoseInterpolate\nlấp đầy keypoint thiếu"]
+    S3["✂️ JointSelect\n54 khớp"]
+    S4{{"🎲 Augment\ntrain only"}}
+    S5["📏 Neck Anchor Norm\n+ Hand Wrist Norm"]
+    S6["📐 Pad 96f + Shift\n→ 96×54×2"]
 
-    subgraph M5["📦 MODULE 5 — Mô hình"]
-        N1["🤖 SPOTER\n(B×96×54×2)"]
-        N2["🕸️ SL-GCN\n(B×3×150×27×1)"]
-    end
+    S1 --> S2 --> S3 --> S4 --> S5 --> S6
 
-    subgraph M6["📦 MODULE 6 — Huấn luyện"]
-        O["HuggingFace Trainer\ntrain.py → main()"]
-        P["💾 Checkpoint\nexperiments/run_name/"]
-        O --> P
-    end
+    style S4 fill:#78350f,color:#fef3c7,stroke:#d97706
+```
 
-    subgraph M7["📦 MODULE 7 — Đánh giá"]
-        Q["compute_metrics()\nAcc + F1 + Top-5 + Top-10"]
-        R["results.json + confusion_matrix.png"]
-        Q --> R
-    end
+### SL-GCN Transform Pipeline (M4B)
 
-    subgraph M8["📦 MODULE 8 — Suy diễn / Demo"]
-        S["Pipeline Wrapper\n(SPOTER / SL-GCN)"]
-        T["inference.py / demo_web.py"]
-        S --> T
-    end
+```mermaid
+flowchart LR
+    G1["📖 PoseExtract\n.pose → Pose"]
+    G2{{"🎲 Augment\ntrain only"}}
+    G3["✂️ JointSelect\n27 khớp"]
+    G4["📐 Pad 150f\n→ C×T×V×M"]
+    G5[/"🦴 Bone Stream\noptional"/]
+    G6[/"⚡ Motion Stream\noptional"/]
+    G7["📏 Normalize"]
 
-    I -->|pose| J1
-    I -->|pose| K1
-    J5 --> N1
-    K5 --> N2
-    N1 & N2 --> O
-    O --> Q
-    P --> S
+    G1 --> G2 --> G3 --> G4 --> G5 --> G7
+    G4 --> G6 --> G7
+
+    style G2 fill:#78350f,color:#fef3c7,stroke:#d97706
+    style G5 fill:#1e3a5f,color:#f9fafb,stroke:#3b82f6,stroke-dasharray:4
+    style G6 fill:#1e3a5f,color:#f9fafb,stroke:#3b82f6,stroke-dasharray:4
 ```
 
 ---
