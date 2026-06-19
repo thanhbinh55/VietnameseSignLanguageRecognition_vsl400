@@ -177,6 +177,7 @@ def load_pose_model_for_training(
 
 
 class Predictions:
+    """Container for inference results, including timing and top-k predictions."""
     def __init__(
         self,
         predictions: list[dict] = None,

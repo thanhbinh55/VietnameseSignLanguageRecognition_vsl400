@@ -21,6 +21,11 @@ from tools import (
 
 
 def train_with_checkpoint_compat(trainer: Trainer, resume_from_checkpoint: str = None):
+    """
+    Train a model with compatibility for older PyTorch checkpoints.
+    This temporarily modifies torch.load to allow loading pickle files,
+    which is often required for older HuggingFace models.
+    """
     if resume_from_checkpoint is None:
         return trainer.train()
 
@@ -38,6 +43,7 @@ def train_with_checkpoint_compat(trainer: Trainer, resume_from_checkpoint: str =
 
 
 def get_args() -> Namespace:
+    """Parse command line arguments for the training script."""
     parser = ArgumentParser(
         description="Train a SLR model",
         add_config_path_arg=True,
@@ -61,6 +67,7 @@ def get_args() -> Namespace:
 
 
 def main(args: Namespace) -> None:
+    """Main execution entrypoint for training the Sign Language Recognition model."""
     data_config = args.data
     logging.info(data_config)
     model_config = args.model

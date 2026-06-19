@@ -10,7 +10,7 @@ __pycache__/
 *$py.class
 
 # Dữ liệu và log
-data/
+/data/
 experiments/
 demo/
 *.log
@@ -29,3 +29,13 @@ Thumbs.db
 *.pdf
 # NumPy preprocessed arrays
 *.npy
+
+# Non-pipeline and demo files
+2024.signlang-1.36.pdf
+IJSRED-V9I1P55.pdf
+vsl400_dataset.pdf
+src/demo_web.py
+src/visualization.py
+generate_ablation_configs.py
+generate_ablation_report.py
+run_ablation.py

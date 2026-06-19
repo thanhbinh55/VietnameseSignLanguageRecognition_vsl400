@@ -11,6 +11,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 def get_args() -> Namespace:
+    """Parse command line arguments for keypoint extraction."""
     parser = ArgumentParser()
     parser.add_argument(
         "--video_dir",
@@ -37,6 +38,7 @@ def get_args() -> Namespace:
 
 
 def process_video(video_path: str, overwrite: bool) -> str:
+    """Run the video_to_pose executable to extract Mediapipe keypoints from a video."""
     video = Path(video_path)
     pose = video.with_suffix(".pose")
 
@@ -77,6 +79,7 @@ def process_video(video_path: str, overwrite: bool) -> str:
 
 
 def main(args: Namespace) -> None:
+    """Main entrypoint for extracting keypoints from all videos in a directory."""
     logging.info(f"Extracting keypoints from videos in {args.video_dir}")
     logging.info(f"Overwrite existing keypoints: {args.overwrite}")
     logging.info(f"Number of workers: {args.num_workers}")

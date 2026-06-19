@@ -10,6 +10,7 @@ from tools import load_model, load_dataset
 
 
 def get_args() -> Namespace:
+    """Parse command line arguments for dataset preprocessing."""
     parser = ArgumentParser(description="Preprocess and export VSL-400 keypoint dataset")
     parser.add_arguments(DataConfig, "data")
     parser.add_arguments(ModelConfig, "model")
@@ -23,6 +24,7 @@ def get_args() -> Namespace:
 
 
 def main(args: Namespace) -> None:
+    """Main entrypoint for preprocessing the VSL-400 dataset."""
     data_config = args.data
     model_config = args.model
     output_root = Path(args.output_dir)

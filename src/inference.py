@@ -17,6 +17,7 @@ from tools import load_pipeline, Predictions
 
 
 def get_args() -> Namespace:
+    """Parse command line arguments."""
     parser = ArgumentParser(
         description="Train a model on VSL",
         add_config_path_arg=True,
@@ -26,26 +27,82 @@ def get_args() -> Namespace:
     return parser.parse_args()
 
 
+def process_frame(frame: np.ndarray, keypoints_detector) -> tuple[np.ndarray, any]:
+    """Process a single frame to extract Mediapipe pose landmarks."""
+    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    rgb_frame.flags.writeable = False
+    detection_results = keypoints_detector.process(rgb_frame)
+    rgb_frame.flags.writeable = True
+    return rgb_frame, detection_results
+
+
+def run_prediction(
+    data: list, 
+    pipeline: Pipeline, 
+    config: InferenceConfig, 
+    source_fps: float, 
+    frame_shape: tuple
+) -> Predictions:
+    """Run model inference on the accumulated frames/pose data."""
+    start_inference_time = time()
+    if config.use_pose_model:
+        sample = {
+            "frames": data,
+            "fps": source_fps,
+            "width": frame_shape[1],
+            "height": frame_shape[0],
+        }
+    else:
+        sample = np.array(data)
+        
+    predictions = Predictions(predictions=pipeline(sample, top_k=config.top_k))
+    predictions.inference_time = time() - start_inference_time
+    return predictions
+
+
+def render_visuals(
+    frame: np.ndarray,
+    detection_results,
+    left_arm: Arm,
+    right_arm: Arm,
+    predictions: Predictions,
+    config: InferenceConfig
+) -> np.ndarray:
+    """Render arms angle, prediction results, and skeleton on the frame."""
+    frame = left_arm.visualize(frame, (20, 10), "Left arm angle")
+    frame = right_arm.visualize(frame, (20, 40), "Right arm angle")
+    frame = predictions.visualize(frame, (20, 70))
+    
+    if config.show_skeleton and detection_results.pose_landmarks:
+        drawing_utils.draw_landmarks(
+            frame,
+            detection_results.pose_landmarks,
+            pose.POSE_CONNECTIONS
+        )
+    return frame
+
+
 def inference(config: InferenceConfig, pipeline: Pipeline) -> None:
-    # Load video
+    """Main inference loop for processing video/webcam feed."""
     source = str(config.source) if config.source.is_file() else 0
     cap = cv2.VideoCapture(source)
     source_fps = cap.get(cv2.CAP_PROP_FPS) or 25
+    
+    writer = None
     if config.output_dir is not None:
         writer = cv2.VideoWriter(
             str(config.output_dir / "output.mp4"),
             cv2.VideoWriter_fourcc(*"mp4v"),
-            cap.get(cv2.CAP_PROP_FPS),
+            source_fps,
             (int(cap.get(3)), int(cap.get(4))),
         )
 
-    # Init Mediapipe
+    # Init Mediapipe holistic model for body and hands keypoints
     keypoints_detector = holistic.Holistic(
         model_complexity=0,
         min_detection_confidence=0.9,
     )
 
-    # Init variables
     right_arm = Arm("right", config.visibility)
     left_arm = Arm("left", config.visibility)
     data = []
@@ -57,105 +114,64 @@ def inference(config: InferenceConfig, pipeline: Pipeline) -> None:
         if not success:
             break
 
-        # Recolor image to RGB, because mp processes on RGB image
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        rgb_frame.flags.writeable = False
+        rgb_frame, detection_results = process_frame(frame, keypoints_detector)
 
-        # Make detections
-        detection_results = keypoints_detector.process(rgb_frame)
-
-        # Recolor image back to BGR, because cv2 processes on BGR image
-        rgb_frame.flags.writeable = True
-
-        # Extract landmarks
-        try:
+        # Update arm poses if landmarks are found
+        if detection_results.pose_landmarks:
             landmarks = detection_results.pose_landmarks.landmark
-        except Exception:
+            left_arm.set_pose(landmarks)
+            right_arm.set_pose(landmarks)
+        else:
             continue
 
-        left_arm.set_pose(landmarks)
-        right_arm.set_pose(landmarks)
+        # Check if arms are raised indicating a sign is being performed
+        current_time_ms = cap.get(cv2.CAP_PROP_POS_MSEC)
+        left_ok = ok_to_get_frame(
+            arm=left_arm, angle_threshold=config.angle_threshold,
+            min_num_up_frames=config.min_num_up_frames, min_num_down_frames=config.min_num_down_frames,
+            current_time=current_time_ms, delay=config.delay,
+        )
+        right_ok = ok_to_get_frame(
+            arm=right_arm, angle_threshold=config.angle_threshold,
+            min_num_up_frames=config.min_num_up_frames, min_num_down_frames=config.min_num_down_frames,
+            current_time=current_time_ms, delay=config.delay,
+        )
 
-        # Check if arms are up or down
-        left_arm_ok_to_get_frame = ok_to_get_frame(
-            arm=left_arm,
-            angle_threshold=config.angle_threshold,
-            min_num_up_frames=config.min_num_up_frames,
-            min_num_down_frames=config.min_num_down_frames,
-            current_time=cap.get(cv2.CAP_PROP_POS_MSEC),
-            delay=config.delay,
-        )
-        right_arm_ok_to_get_frame = ok_to_get_frame(
-            arm=right_arm,
-            angle_threshold=config.angle_threshold,
-            min_num_up_frames=config.min_num_up_frames,
-            min_num_down_frames=config.min_num_down_frames,
-            current_time=cap.get(cv2.CAP_PROP_POS_MSEC),
-            delay=config.delay,
-        )
-        if left_arm_ok_to_get_frame or right_arm_ok_to_get_frame:
-            # logging.info("Frame added to the list")
-            predictions = Predictions()
+        # Accumulate frames while arms are up
+        if left_ok or right_ok:
+            predictions = Predictions() # Clear old predictions
             data.append(rgb_frame.copy() if config.use_pose_model else frame.copy())
 
-        # Calculate the start and end time of sign
+        # Determine start and end time of the sign based on arm movements
         start_time, end_time = get_sample_timestamp(left_arm, right_arm)
 
-        # logging.info(f"start_time: {start_time} - end_time: {end_time}")
-        # logging.info(f"\tLeft arm: {left_arm.start_time} - {left_arm.end_time} - {left_arm.is_up}")
-        # logging.info(f"\tRight arm: {right_arm.start_time} - {right_arm.end_time} - {right_arm.is_up}")
-
         if start_time != 0 and end_time != 0:
-            # Render waiting screen
             if config.visualize:
                 wait_frame = draw_text_on_image(
-                    np.zeros_like(frame),
-                    text="Please wait for the prediction...",
-                    position=(20, 20),
-                    color=(255, 255, 255),
-                    font_size=20,
+                    np.zeros_like(frame), text="Please wait for the prediction...",
+                    position=(20, 20), color=(255, 255, 255), font_size=20,
                 )
                 cv2.imshow("Video Visualization", wait_frame)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
 
-            start_inference_time = time()
-            if config.use_pose_model:
-                sample = {
-                    "frames": data,
-                    "fps": source_fps,
-                    "width": frame.shape[1],
-                    "height": frame.shape[0],
-                }
-            else:
-                sample = np.array(data)
-            predictions = Predictions(predictions=pipeline(sample, top_k=config.top_k))
-            predictions.inference_time = time() - start_inference_time
-
+            # Execute pipeline
+            predictions = run_prediction(data, pipeline, config, source_fps, frame.shape)
             predictions.start_time = start_time
             predictions.end_time = end_time
+            
             logging.info(str(predictions))
             results = predictions.merge_results(results)
 
-            # Reset variables
-            start_time = 0
-            end_time = 0
+            # Reset variables for the next sign
+            start_time, end_time = 0, 0
             left_arm.reset_state()
             right_arm.reset_state()
             data = []
 
-        # Render detections
-        frame = left_arm.visualize(frame, (20, 10), "Left arm angle")
-        frame = right_arm.visualize(frame, (20, 40), "Right arm angle")
-        frame = predictions.visualize(frame, (20, 70))
-        if config.show_skeleton:
-            drawing_utils.draw_landmarks(
-                frame,
-                detection_results.pose_landmarks,
-                pose.POSE_CONNECTIONS
-            )
+        frame = render_visuals(frame, detection_results, left_arm, right_arm, predictions, config)
 
-        if config.output_dir is not None:
+        if writer is not None:
             writer.write(frame)
 
         if config.visualize:
@@ -166,23 +182,21 @@ def inference(config: InferenceConfig, pipeline: Pipeline) -> None:
     cap.release()
     cv2.destroyAllWindows()
 
-    if config.output_dir is not None:
+    if writer is not None:
         writer.release()
-        logging.info(f"Video is recorded and saved to {config.output_dir / 'output.avi'}")
+        logging.info(f"Video is recorded and saved to {config.output_dir / 'output.mp4'}")
         pd.DataFrame(results).to_csv(config.output_dir / "results.csv", index=False)
         logging.info(f"Results saved to {config.output_dir / 'results.csv'}")
 
 
 def main(args: Namespace) -> None:
+    """Load model pipeline and start inference."""
     model_config = args.model
-    logging.info(model_config)
     inference_config = args.inference
+    logging.info(model_config)
     logging.info(inference_config)
 
-    if model_config.arch in POSE_BASED_MODELS:
-        inference_config.use_pose_model = True
-    else:
-        inference_config.use_pose_model = False
+    inference_config.use_pose_model = model_config.arch in POSE_BASED_MODELS
 
     pipeline = load_pipeline(model_config, inference_config)
     logging.info("Pipeline loaded")
@@ -194,13 +208,10 @@ def main(args: Namespace) -> None:
 if __name__ == "__main__":
     try:
         args = get_args()
-
         config_logger(args.inference.output_dir / "inference.log")
         logging.info(f"Config file loaded from {args.config_path[0]}")
-
         shutil.copy(args.config_path[0], args.inference.output_dir / "inference.yaml")
         logging.info(f"Config file saved to {args.inference.output_dir}")
-
         main(args=args)
     except Exception:
         print(format_exc())

@@ -56,6 +56,7 @@ class ProcessRecordedVideosArguments():
 
 @dataclass
 class TransformConfig:
+    """Configuration for data augmentations and transformations applied to pose sequences."""
     # Pose specific
     aug_prob: float = 0.5
 
@@ -82,6 +83,7 @@ class TransformConfig:
 
 @dataclass
 class DataConfig:
+    """Configuration for dataset loading, including dataset path and modality."""
     dataset: str = "vsl"
     modality: str = "pose"
     subset: str = None
@@ -99,6 +101,7 @@ class DataConfig:
 
 @dataclass
 class ModelConfig:
+    """Configuration for model architectures, hyperparameters, and specific stream settings."""
     arch: str = "spoter"
     pretrained: str = "DEFAULT"
     num_frozen_layers: int = 0
@@ -132,6 +135,7 @@ class ModelConfig:
 
 @dataclass
 class TrainingConfig:
+    """Configuration for the training loop, optimizer, learning rate, and logging (WandB/Output)."""
     output_dir: str = "experiments"
     remove_unused_columns: bool = False
     do_train: bool = True
@@ -181,6 +185,7 @@ class TrainingConfig:
 
 @dataclass
 class EvaluationConfig:
+    """Configuration for evaluating a previously trained model checkpoint."""
     arch: str = None
     pretrained: str = None
     output_dir: str = "experiments"
@@ -203,6 +208,7 @@ class EvaluationConfig:
 
 @dataclass
 class InferenceConfig:
+    """Configuration for running inference (webcam/video source, Mediapipe UI thresholds, etc)."""
     source: str = "webcam"
     output_dir: str = "demo"
     use_onnx: bool = False

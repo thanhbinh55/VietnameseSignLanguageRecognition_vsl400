@@ -100,24 +100,64 @@ python src/train.py --config_path src/configs/training/spoter.yaml
 
 ## Chạy full pipeline từ video thô
 
-```bash
-# Bước 1: Trích xuất keypoint từ video
-python src/extract_keypoints.py --video_dir data/processed/vsl_400/cam_1 --num_workers 4
+Quy trình đầy đủ từ bước xử lý video thô đến huấn luyện và chạy thử nghiệm mô hình:
 
-# Bước 2: Xuất keypoint đã tiền xử lý (để chia sẻ hoặc dùng lại)
+### Bước 1: Phát hiện biên và cắt video (TBL & BGSP)
+Nếu bạn bắt đầu từ video ghi hình liên tục (chứa nhiều cử chỉ ký hiệu), cần định vị các khoảng thời gian cử chỉ diễn ra và cắt/crop video:
+
+```bash
+# 1.1 Xác định biên thời gian (tạo file CSV chứa mốc thời gian bắt đầu/kết thúc)
+python src/data/temporal_boundary_localization.py \
+    --input_video data/raw/your_video.mp4 \
+    --get_cut_time \
+    --overwrite
+
+# 1.2 Cắt và crop video theo mốc thời gian đã tìm được (kết quả lưu trong thư mục con cùng tên)
+python src/data/boundary_segmentation_pruning.py \
+    --input_video data/raw/your_video.mp4 \
+    --cut_crop_video \
+    --overwrite
+```
+
+### Bước 2: Trích xuất keypoint từ video đã cắt
+
+```bash
+# Trích xuất tọa độ keypoint (định dạng MediaPipe .pose)
+python src/extract_keypoints.py --video_dir data/raw/your_video --num_workers 4
+```
+
+### Bước 3: Xuất keypoint tiền xử lý (Interpolation & Normalization)
+
+```bash
+# Thực hiện các bước chuẩn hóa (ví dụ: Neck Anchor) và lưu thành file .npy
 python src/preprocess_dataset.py \
     --config_path src/configs/training/spoter.yaml \
     --output_dir data/preprocessed_vsl
+```
 
-# Bước 3: Huấn luyện
+### Bước 4: Huấn luyện mô hình
+
+```bash
 python src/train.py --config_path src/configs/training/spoter.yaml
+```
 
-# Bước 4: Đánh giá
+### Bước 5: Đánh giá mô hình
+
+```bash
 python src/evaluate_model.py --config_path src/configs/evaluation/spoter.yaml
+```
 
-# Demo webcam
+### Demo với Webcam / Interface Web
+
+```bash
 python src/demo_web.py --config_path src/configs/inference/spoter_m4_cam1.yaml
 ```
+
+> [!TIP]
+> **Lưu ý đối với hệ điều hành macOS (Apple Silicon):**
+> - Dự án đã được cấu hình tương thích với thư viện `mediapipe-silicon` (import thông qua `mediapipe.python.solutions` thay vì `mediapipe.solutions` như thông thường để tránh lỗi `ModuleNotFoundError`).
+> - Khi chạy các script trên macOS, bạn nên thêm cờ `-B` vào lệnh gọi python (ví dụ: `python -B src/train.py ...`) để ngăn Python cố gắng tạo/ghi đè file cache bytecode `.pyc` trong môi trường sandbox hệ thống nếu gặp vấn đề về quyền (permission).
+
 
 ---
 

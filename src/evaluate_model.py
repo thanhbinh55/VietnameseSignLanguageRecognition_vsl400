@@ -18,6 +18,7 @@ from tools import (
 
 
 def get_args() -> Namespace:
+    """Parse command line arguments for the evaluation script."""
     parser = ArgumentParser(
         description="Evaluate a SLR model",
         add_config_path_arg=True,
@@ -28,6 +29,7 @@ def get_args() -> Namespace:
 
 
 def main(args: Namespace) -> None:
+    """Main execution entrypoint for evaluating the Sign Language Recognition model."""
     data_config = args.data
     logging.info(data_config)
     eval_config = args.evaluation

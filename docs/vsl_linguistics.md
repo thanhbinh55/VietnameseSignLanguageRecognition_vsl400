@@ -4,10 +4,6 @@
 ### Link đã chuyển sang Latex
 https://www.overleaf.com/3443147841xmmmdmwrbrcv#e736bf 
 
-### Tài liệu tham khảo và ghi chú hệ thống
-* Một số thắc mắc về sự khác biệt giữa VSL và ASL - Google Tài liệu (tham khảo lại các nguồn đã tìm hiểu).
-* Các nguồn tài liệu chính thống, có trích dẫn thêm các nội dung về bài toán nhận dạng ngôn ngữ ký hiệu (`noidung-30-33_11.pdf`).
-
 ---
 
 ## TÓM TẮT
