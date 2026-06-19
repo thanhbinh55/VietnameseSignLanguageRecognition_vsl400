@@ -31,9 +31,9 @@ Evaluating rotation, squeezing, perspective transforms, joint kinematics, and no
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | Run 07 | Keypoint Interpolation (using best TBL θ = 160°, τb = 400 ms) | 90.21% | 90.46% | 80.80% | 80.72% | Completed |
 | Run 10 | Spatial Augmentations only (Rotate / Squeeze) | 89.73% | 89.85% | 81.61% | 81.58% | Completed |
-| Run 11 | Perspective Skew Augmentation only | *N/A* | *N/A* | *N/A* | *N/A* | Missing |
-| Run 12 | Kinematic Augmentation only (ArmJointRotate) | *N/A* | *N/A* | *N/A* | *N/A* | Missing |
-| Run 13 | Gaussian Noise Augmentation only | *N/A* | *N/A* | *N/A* | *N/A* | Missing |
+| Run 11 | Perspective Skew Augmentation only | 89.89% | 90.12% | 81.27% | 81.10% | Completed |
+| Run 12 | Kinematic Augmentation only (ArmJointRotate) | 88.80% | 89.13% | 80.55% | 80.44% | Completed |
+| Run 13 | Gaussian Noise Augmentation only | 88.32% | 88.69% | 79.71% | 79.39% | Completed |
 | Run 14 | Combined Augmentations (Spatial + Perspective + Kinematic + Noise) | 90.25% | 90.36% | 82.30% | 82.30% | Completed |
 | Run 15 | Facial Landmarks Integration (Eyebrows, Eyes, Mouth + Combined Augs) | 89.49% | 89.80% | 80.96% | 80.94% | Completed |
 
