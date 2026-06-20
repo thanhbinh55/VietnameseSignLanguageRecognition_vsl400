@@ -35,7 +35,6 @@ Thumbs.db
 IJSRED-V9I1P55.pdf
 vsl400_dataset.pdf
 src/demo_web.py
-src/visualization.py
 generate_ablation_configs.py
 generate_ablation_report.py
 run_ablation.py

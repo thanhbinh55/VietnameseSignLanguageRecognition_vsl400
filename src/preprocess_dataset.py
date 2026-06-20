@@ -32,24 +32,52 @@ def main(args: Namespace) -> None:
     print("Loading dataset metadata...")
     dataset = load_dataset(data_config)
 
-    # Load model config to get the correct feature extractor/processor
-    print("Initializing preprocessing pipeline...")
-    _, processor, _ = load_model(model_config, do_train=False)
+    # For preprocessing we only need the processor (transform config), not the full model.
+    # Directly instantiate the processor from ModelConfig to avoid needing pretrained
+    # weights or a label2id mapping (which is only required for the classifier head).
+    from models import (
+        SPOTERConfig, SPOTERFeatureExtractor,
+        SLGCNConfig, SLGCNFeatureExtractor,
+    )
+    if model_config.arch == "spoter":
+        proc_config = SPOTERConfig(**vars(model_config))
+        processor = SPOTERFeatureExtractor(config=proc_config)
+    elif model_config.arch == "sl_gcn":
+        proc_config = SLGCNConfig(**vars(model_config))
+        processor = SLGCNFeatureExtractor(config=proc_config)
+    else:
+        raise ValueError(f"Unsupported arch for preprocessing: {model_config.arch}")
 
     # Get the clean pose transform pipeline (no training augmentations like shear/noise)
     # This uses split="test" to ensure we only get: Interpolate -> Extract -> Select -> Normalize -> Tensor
     transforms = dataset.get_split("test", processor).transforms
 
-    # Create output directory structure
-    cams = data_config.subset.split("_")[1:]
-    for cam in cams:
-        (output_root / f"cam_{cam}").mkdir(parents=True, exist_ok=True)
+    # Determine camera/views structure from subset if available
+    cams = []
+    if data_config.subset and "_" in data_config.subset:
+        cams = data_config.subset.split("_")[1:]
+    
+    # We use subdirectories only if:
+    # 1. cams is not empty.
+    # 2. output_root's name is NOT already a camera/view name (like cam_side, side, cam_front, front),
+    #    which indicates the user specified a camera-specific directory directly.
+    use_subdirs = False
+    if cams:
+        use_subdirs = True
+        for cam in cams:
+            if output_root.name == f"cam_{cam}" or output_root.name == cam:
+                use_subdirs = False
+                break
+
+    if use_subdirs:
+        for cam in cams:
+            (output_root / f"cam_{cam}").mkdir(parents=True, exist_ok=True)
 
     # Process each split
+    all_processed_records = []
     for split in ["train", "validation", "test"]:
         print(f"Preprocessing {split} split...")
         samples = dataset.dataset[split]
-        processed_records = []
 
         for sample in tqdm(samples):
             video_id = sample["video_id"]
@@ -63,13 +91,13 @@ def main(args: Namespace) -> None:
                 # Convert PyTorch Tensor to NumPy array
                 preprocessed_np = preprocessed_tensor.cpu().numpy()
                 
-                # Determine subdirectory based on cam_id in video_id or folder path
-                # VSL_400 video naming convention contains cam info, or we can look at the path
-                cam_dir = "cam_1"
-                for cam in cams:
-                    if f"cam_{cam}" in pose_path or f"cam_{cam}" in video_id:
-                        cam_dir = f"cam_{cam}"
-                        break
+                # Determine subdirectory
+                cam_dir = ""
+                if use_subdirs:
+                    for cam in cams:
+                        if f"cam_{cam}" in pose_path or f"cam_{cam}" in video_id:
+                            cam_dir = f"cam_{cam}"
+                            break
                 
                 # Save as .npy
                 out_file_name = f"{video_id}_preprocessed.npy"
@@ -79,19 +107,32 @@ def main(args: Namespace) -> None:
                 # Record metadata mapping
                 record = sample.copy()
                 record["pose"] = str(out_path)
-                processed_records.append(record)
+                all_processed_records.append(record)
                 
             except Exception as e:
                 print(f"Error processing {video_id}: {e}")
 
-        # Save preprocessed metadata JSON for each camera subset
+    # Save preprocessed metadata JSON
+    if use_subdirs:
         for cam in cams:
-            cam_records = [r for r in processed_records if f"cam_{cam}" in r["pose"] or f"cam_{cam}" in r["video_id"]]
+            cam_records = [r for r in all_processed_records if f"cam_{cam}" in r["pose"] or f"cam_{cam}" in r["video_id"]]
             if cam_records:
                 meta_out_path = output_root / f"cam_{cam}.json"
                 with open(meta_out_path, "w", encoding="utf-8") as f:
                     json.dump(cam_records, f, indent=4, ensure_ascii=False)
                 print(f"Saved preprocessed metadata to {meta_out_path}")
+    else:
+        if cams:
+            meta_name = f"cam_{cams[0]}.json"
+        elif data_config.subset:
+            meta_name = f"{data_config.subset}.json"
+        else:
+            meta_name = "metadata.json"
+            
+        meta_out_path = output_root / meta_name
+        with open(meta_out_path, "w", encoding="utf-8") as f:
+            json.dump(all_processed_records, f, indent=4, ensure_ascii=False)
+        print(f"Saved preprocessed metadata to {meta_out_path}")
 
     # Copy gloss.csv if exists
     gloss_csv = Path(data_config.data_dir) / "gloss.csv"

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 from dataclasses import dataclass, field
 from utils import MODELS, VIDEO_EXTENSIONS
 import argparse
@@ -72,7 +72,7 @@ class TransformConfig:
 
     # Ablation parameters
     interpolate: bool = True    # PoseInterpolate: linear interpolation for missing keypoints (Roh et al., 2024)
-    anchor: str = "neck"        # Best ablation result: neck anchor +3% Test Acc vs box (Run 08)
+    anchor: str = "neck"        # Best ablation result: neck anchor +3 percent Test Acc vs box (Run 08)
     include_face: bool = False  # Facial landmarks did not improve in this setup (Run 15)
     active_augs: list = field(default_factory=lambda: [0, 1, 2, 3])
 
@@ -84,17 +84,20 @@ class TransformConfig:
 @dataclass
 class DataConfig:
     """Configuration for dataset loading, including dataset path and modality."""
-    dataset: str = "vsl"
+    dataset: str = "visl_400"
     modality: str = "pose"
-    subset: str = None
+    subset: Optional[str] = None
     data_dir: str = "data/processed/vsl"
+    keypoint_dir: Optional[str] = None  # Optional: separate directory for raw .pose files.
+                                        # If None, .pose files are looked up inside data_dir.
+                                        # Set via CLI: --data.keypoint_dir /path/to/Keypoint/raw
     fps: int = 30
     debug: bool = False
     transform: TransformConfig = field(default_factory=TransformConfig)
 
     def __post_init__(self):
-        assert self.dataset == "visl_400", \
-            "Only VISL-400 dataset is supported for now"
+        assert self.dataset, \
+            "Dataset name must be specified"
         assert self.modality == "pose", \
             "Only Pose modality is supported now"
 

@@ -21,9 +21,11 @@ class VISL400Dataset(BaseDataset):
                 "data": data_dir,
             }
 
+        keypoint_dir = getattr(self.data_config, "keypoint_dir", None)
         train_df, val_df, test_df, gloss2id = load_visl_400(
-            data_dict, 
-            gloss2id_file if gloss2id_file.exists() else None
+            data_dict,
+            gloss2id_file if gloss2id_file.exists() else None,
+            keypoint_dir=keypoint_dir,
         )
         if self.data_config.modality == "pose":
             train_df = train_df[
