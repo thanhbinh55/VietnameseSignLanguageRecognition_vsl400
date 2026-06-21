@@ -1,7 +1,7 @@
 # VSL-400 Preprocessing Ablation Study — Research Report
 
-> **Tình trạng hoàn tất:** 11 / 19 runs đã hoàn tất · 1 run thất bại · 7 runs chưa chạy (Missing)
-> Cập nhật lần cuối: tháng 6 năm 2025
+> **Tình trạng hoàn tất:** 13 / 19 runs đã hoàn tất · 1 run thất bại · 5 runs chưa chạy (Missing)
+> Cập nhật lần cuối: tháng 6 năm 2026
 
 ---
 
@@ -154,11 +154,13 @@ Tất cả runs dùng Keypoint Interpolation + Neck Anchor từ Run 08 làm nề
 
 | Run | Cấu hình | Val Acc | Val F1 | Test Acc | Test F1 | Trạng thái |
 | :--- | :--- | ---: | ---: | ---: | ---: | :--- |
-| Run 16 | SL-GCN Baseline | *—* | *—* | *—* | *—* | ⏳ Missing |
-| Run 17 | SL-GCN + Interpolation + Best TBL | *—* | *—* | *—* | *—* | ⏳ Missing |
+| Run 16 | SL-GCN Baseline | 78.37% | 78.16% | 67.44% | 66.88% | ✅ Completed (Image log) |
+| Run 17 | SL-GCN + Interpolation + Best TBL | 84.43% | 84.75% | 73.26% | 73.29% | ✅ Completed |
 | Run 18 | SL-GCN + Interpolation + Best TBL + Face | *—* | *—* | *—* | *—* | ⏳ Missing |
 
-> ⚠️ **Phase 4 chưa thực thi.** Cross-model validation là bước xác nhận tính tổng quát của pipeline nhưng đòi hỏi thêm ~17 giờ GPU. Kết quả sẽ được cập nhật vào báo cáo khi hoàn tất.
+**Nhận xét:** 
+* Kết quả của **Run 17 (84.43% Val Acc, 73.26% Test Acc)** so với **Run 16 (78.37% Val Acc, 67.44% Test Acc)** cho thấy việc thêm **Keypoint Interpolation** (nội suy điểm thiếu) cải thiện hiệu năng vượt bậc cho kiến trúc SL-GCN (tăng **+6.06% Val Acc** và **+5.82% Test Acc**). 
+* Kết quả này củng cố tính tổng quát của pipeline tiền xử lý tối ưu trên cả hai loại kiến trúc (Transformer-based như SPOTER và Graph-based như SL-GCN).
 
 ---
 
@@ -180,7 +182,7 @@ Tất cả runs dùng Keypoint Interpolation + Neck Anchor từ Run 08 làm nề
 | Run 14 | + Combined Aug | **82.30%** | **82.30%** | **+3.71%** |
 | Run 15 | + Face Landmarks | 80.96% | 80.94% | +2.37% |
 
-*Runs 01–02, 04–06, 16–18 chưa có kết quả.*
+*Runs 01–02, 04–06, 18 chưa có kết quả.*
 
 ### 5.2 · Pipeline Đề Xuất
 
@@ -208,7 +210,7 @@ Dựa trên kết quả đã có, pipeline được nhóm đề xuất cho bộ 
 | Hạng mục | Mô tả | Ưu tiên |
 | :--- | :--- | :--- |
 | Hoàn tất Phase 1 | Chạy Run 02/04/05/06 để xác định θ và τb tối ưu thực sự | Cao |
-| Hoàn tất Phase 4 | Chạy Run 16/17/18 để xác nhận chéo trên SL-GCN | Trung bình |
+| Hoàn tất Phase 4 | Chạy Run 18 để hoàn tất xác nhận chéo trên SL-GCN | Trung bình |
 | Multi-seed | Lặp lại các runs với ≥3 seed để có error bar | Trung bình |
 | Facial trên model lớn hơn | Thử hidden_dim=148 với Neck Anchor + Combined Aug | Thấp |
 | Multi-view | Mở rộng sang cam_2, cam_3 | Thấp |

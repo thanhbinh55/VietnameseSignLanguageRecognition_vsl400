@@ -444,6 +444,9 @@ class RealtimeRecognizer:
             self.frames = []
             self.last_predictions = []
             self.last_inference_time = 0.0
+            self.last_clip = None
+            self.last_clip_id = 0
+            self.last_clip_pending = False
             self.message = "Dua tay len de bat dau"
             if clear_history:
                 self.history = []
@@ -495,6 +498,7 @@ class RealtimeRecognizer:
         start_time, end_time = get_sample_timestamp(self.left_arm, self.right_arm)
         if start_time != 0 and end_time != 0 and self.frames:
             self.message = "Dang du doan..."
+            self._store_last_clip_preview(start_time, end_time)
             predictions = self._predict(start_time, end_time)
             self.last_predictions = predictions.predictions or []
             self.last_inference_time = predictions.inference_time
@@ -520,6 +524,47 @@ class RealtimeRecognizer:
         predictions.start_time = start_time
         predictions.end_time = end_time
         return predictions
+
+    def _store_last_clip_preview(self, start_time: float, end_time: float) -> None:
+        if not self.frames:
+            return
+
+        max_preview_frames = 48
+        if len(self.frames) <= max_preview_frames:
+            indices = list(range(len(self.frames)))
+        else:
+            indices = np.linspace(0, len(self.frames) - 1, max_preview_frames, dtype=int).tolist()
+
+        encoded_frames = []
+        for idx in indices:
+            rgb_frame = self.frames[idx]
+            h, w = rgb_frame.shape[:2]
+            scale = min(1.0, 360 / max(w, h))
+            if scale < 1.0:
+                preview = cv2.resize(
+                    rgb_frame,
+                    (max(1, int(w * scale)), max(1, int(h * scale))),
+                    interpolation=cv2.INTER_AREA,
+                )
+            else:
+                preview = rgb_frame
+
+            bgr_preview = cv2.cvtColor(preview, cv2.COLOR_RGB2BGR)
+            ok, buffer = cv2.imencode(".jpg", bgr_preview, [int(cv2.IMWRITE_JPEG_QUALITY), 72])
+            if ok:
+                encoded_frames.append(base64.b64encode(buffer).decode("ascii"))
+
+        self.last_clip_id += 1
+        self.last_clip = {
+            "id": self.last_clip_id,
+            "frames": encoded_frames,
+            "fps": 8,
+            "frame_count": len(self.frames),
+            "preview_frame_count": len(encoded_frames),
+            "start_time": float(start_time),
+            "end_time": float(end_time),
+        }
+        self.last_clip_pending = True
 
     def _append_history(self, predictions: Predictions) -> None:
         if not predictions.predictions:
@@ -552,7 +597,7 @@ class RealtimeRecognizer:
         return output_file
 
     def _state(self, status: str, message: str | None = None) -> dict:
-        return {
+        state = {
             "status": status,
             "message": message or self.message,
             "frames": len(self.frames),
@@ -565,6 +610,16 @@ class RealtimeRecognizer:
             ],
             "history": self.history,
         }
+        if self.last_clip_pending and self.last_clip is not None:
+            state["last_clip"] = self.last_clip
+            self.last_clip_pending = False
+        elif self.last_clip is not None:
+            state["last_clip"] = {
+                key: value
+                for key, value in self.last_clip.items()
+                if key != "frames"
+            }
+        return state
 
 
 def make_handler(recognizer: RealtimeRecognizer):
