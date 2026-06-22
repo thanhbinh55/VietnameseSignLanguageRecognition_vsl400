@@ -1,6 +1,6 @@
 # VSL-400 Preprocessing Ablation Study — Research Report
 
-> **Tình trạng hoàn tất:** 13 / 19 runs đã hoàn tất · 1 run thất bại · 5 runs chưa chạy (Missing)
+> **Tình trạng hoàn tất:** 14 / 19 runs đã hoàn tất · 1 run thất bại · 4 runs chưa chạy (Missing)
 > Cập nhật lần cuối: tháng 6 năm 2026
 
 ---
@@ -150,23 +150,26 @@ Tất cả runs dùng Keypoint Interpolation + Neck Anchor từ Run 08 làm nề
 
 ### 4.5 · Phase 4 — Cross-Model Validation (SL-GCN)
 
-**Mục tiêu:** Xác minh tính tổng quát hóa của pipeline tối ưu trên một kiến trúc mô hình khác.
+**Mục tiêu:** Xác minh tính tổng quát hóa của pipeline tối ưu trên kiến trúc mô hình dựa trên đồ thị (SL-GCN).
 
 | Run | Cấu hình | Val Acc | Val F1 | Test Acc | Test F1 | Trạng thái |
 | :--- | :--- | ---: | ---: | ---: | ---: | :--- |
-| Run 16 | SL-GCN Baseline | 78.37% | 78.16% | 67.44% | 66.88% | ✅ Completed (Image log) |
-| Run 17 | SL-GCN + Interpolation + Best TBL | 84.43% | 84.75% | 73.26% | 73.29% | ✅ Completed |
-| Run 18 | SL-GCN + Interpolation + Best TBL + Face | *—* | *—* | *—* | *—* | ⏳ Missing |
+| Run 16 | SL-GCN Baseline | 78.37% | 78.16% | 67.44% | 66.88% | ✅ Completed |
+| Run 17 | SL-GCN + Interpolation + Best TBL | 83.99% | 84.34% | 73.26% | 73.29% | ✅ Completed |
+| Run 18 | SL-GCN + Interpolation + Best TBL + Face | **86.20%** | **86.63%** | **75.41%** | **75.23%** | ✅ Completed |
 
 **Nhận xét:** 
-* Kết quả của **Run 17 (84.43% Val Acc, 73.26% Test Acc)** so với **Run 16 (78.37% Val Acc, 67.44% Test Acc)** cho thấy việc thêm **Keypoint Interpolation** (nội suy điểm thiếu) cải thiện hiệu năng vượt bậc cho kiến trúc SL-GCN (tăng **+6.06% Val Acc** và **+5.82% Test Acc**). 
-* Kết quả này củng cố tính tổng quát của pipeline tiền xử lý tối ưu trên cả hai loại kiến trúc (Transformer-based như SPOTER và Graph-based như SL-GCN).
+* **Tác động của Keypoint Interpolation (Run 17 vs Run 16)**: Việc bổ sung cơ chế nội suy điểm thiếu giúp cải thiện hiệu năng vượt trội cho SL-GCN (tăng **+5.62% Val Acc** và **+5.82% Test Acc**). Kết quả này củng cố tính tổng quát của bước tiền xử lý nội suy đối với mô hình đồ thị vốn nhạy cảm với việc mất kết nối keypoint.
+* **Tác động của Face Landmarks (Run 18 vs Run 17)**: Khác với kiến trúc SPOTER (nơi landmarks khuôn mặt có xu hướng gây nhiễu), trên mô hình SL-GCN, Face Landmarks giúp tăng thêm đáng kể hiệu năng (tăng **+2.21% Val Acc** và **+2.15% Test Acc**). Điều này chỉ ra cấu trúc liên kết đồ thị cục bộ của GCN giúp phân tách và khai thác tốt thông tin biểu cảm khuôn mặt mà không làm bão hòa khả năng biểu diễn của mô hình.
+* **So sánh chéo giữa hai kiến trúc**: Mặc dù Run 18 là cấu hình tốt nhất của SL-GCN (Test Acc 75.41%), nó vẫn thấp hơn SPOTER Run 08 (Test Acc 84.08%). Sự chênh lệch này đến từ cơ chế Self-Attention toàn cục của Transformer cho phép SPOTER học các mối quan hệ khoảng cách xa linh hoạt hơn cấu trúc đồ thị tĩnh định sẵn của GCN.
 
 ---
 
 ## 5. Tổng hợp và Pipeline Được Đề Xuất
 
 ### 5.1 · Bảng so sánh tất cả cấu hình đã chạy
+
+**Kiến trúc SPOTER:**
 
 | Run | Mô tả ngắn | Test Acc | Test F1 | Δ vs Baseline (Run 00) |
 | :--- | :--- | ---: | ---: | ---: |
@@ -182,7 +185,15 @@ Tất cả runs dùng Keypoint Interpolation + Neck Anchor từ Run 08 làm nề
 | Run 14 | + Combined Aug | **82.30%** | **82.30%** | **+3.71%** |
 | Run 15 | + Face Landmarks | 80.96% | 80.94% | +2.37% |
 
-*Runs 01–02, 04–06, 18 chưa có kết quả.*
+**Kiến trúc SL-GCN (Xác thực chéo):**
+
+| Run | Mô tả ngắn | Test Acc | Test F1 | Δ vs Baseline (Run 16) |
+| :--- | :--- | ---: | ---: | ---: |
+| Run 16 | SL-GCN Baseline | 67.44% | 66.88% | — |
+| Run 17 | SL-GCN + Interpolation + Best TBL | 73.26% | 73.29% | +5.82% |
+| Run 18 | SL-GCN + Interpolation + Best TBL + Face | **75.41%** | **75.23%** | **+7.97%** |
+
+*Các run 01-02, 04-06 thiếu kết quả do giới hạn tài nguyên tính toán cục bộ.*
 
 ### 5.2 · Pipeline Đề Xuất
 
@@ -201,7 +212,7 @@ Dựa trên kết quả đã có, pipeline được nhóm đề xuất cho bộ 
 
 *Augmentation (Spatial + Perspective + Kinematic + Gaussian) chỉ áp dụng trong quá trình huấn luyện, không đưa vào keypoint tĩnh của dataset.*
 
-> **Lưu ý quan trọng:** Pipeline trên dựa trên 11/19 runs. Các tham số TBL (θ, τb) **chưa được tối ưu hóa bằng grid search** do giới hạn tài nguyên tính toán. Người sử dụng được khuyến nghị chạy thêm ablation trên dữ liệu riêng trước khi áp dụng.
+> **Lưu ý quan trọng:** Pipeline trên dựa trên các runs đã chạy. Các tham số TBL (θ, τb) **chưa được tối ưu hóa bằng grid search** do giới hạn tài nguyên tính toán. Người sử dụng được khuyến nghị chạy thêm ablation trên dữ liệu riêng trước khi áp dụng.
 
 ---
 
@@ -209,11 +220,11 @@ Dựa trên kết quả đã có, pipeline được nhóm đề xuất cho bộ 
 
 | Hạng mục | Mô tả | Ưu tiên |
 | :--- | :--- | :--- |
-| Hoàn tất Phase 1 | Chạy Run 02/04/05/06 để xác định θ và τb tối ưu thực sự | Cao |
-| Hoàn tất Phase 4 | Chạy Run 18 để hoàn tất xác nhận chéo trên SL-GCN | Trung bình |
-| Multi-seed | Lặp lại các runs với ≥3 seed để có error bar | Trung bình |
-| Facial trên model lớn hơn | Thử hidden_dim=148 với Neck Anchor + Combined Aug | Thấp |
-| Multi-view | Mở rộng sang cam_2, cam_3 | Thấp |
+| Hoàn tất Phase 1 | Chạy các run TBL sweep còn thiếu (Run 02, 04, 05, 06) để tối ưu tham số cắt thời gian | Cao |
+| Multi-seed | Lặp lại các runs với ≥3 seed để thu được error bar | Trung bình |
+| Tối ưu hóa cấu trúc đồ thị | Tinh chỉnh Adjacency Matrix cho SL-GCN để giảm khoảng cách hiệu năng với SPOTER | Trung bình |
+| Facial trên model lớn hơn | Thử nghiệm với hidden_dim tăng từ 108 lên 148 kết hợp Neck Anchor | Thấp |
+| Multi-view | Mở rộng ablation thử nghiệm trên dữ liệu cam_2, cam_3 | Thấp |
 
 ---
 

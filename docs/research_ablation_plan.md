@@ -74,9 +74,9 @@ flowchart TD
 | Run 13 | Phase 3 | Gaussian Noise only | ✅ Completed |
 | Run 14 | Phase 3 | Combined (Spatial + Perspective + Kinematic + Noise) | ✅ Completed |
 | Run 15 | Phase 3 | Combined + Facial Landmarks | ✅ Completed |
-| Run 16 | Phase 4 | SL-GCN Baseline | ⏳ Missing |
-| Run 17 | Phase 4 | SL-GCN + Interpolation + Best TBL | ⏳ Missing |
-| Run 18 | Phase 4 | SL-GCN + Interpolation + Best TBL + Face | ⏳ Missing |
+| Run 16 | Phase 4 | SL-GCN Baseline | ✅ Completed |
+| Run 17 | Phase 4 | SL-GCN + Interpolation + Best TBL | ✅ Completed |
+| Run 18 | Phase 4 | SL-GCN + Interpolation + Best TBL + Face | ✅ Completed |
 
 ---
 
