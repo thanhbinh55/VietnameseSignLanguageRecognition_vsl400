@@ -73,6 +73,33 @@ Copy-Item Dataset\processed_videos\split_variant_predicted\*.mp4 Dataset\process
 .\.venv\Scripts\python.exe Dataset\processed_videos\result3\rebuild_labels_result3.py
 ```
 
+### (Tùy chọn) Cắt thủ công theo mốc tự nhập (`manual_cut`)
+
+Với video OCR không xử lý được (nằm trong `manual/`), hoặc khi đã biết chính xác
+mốc cắt, dùng `manual_cut` để **tự khai báo điểm cắt** trong một bảng CSV/XLSX —
+không dùng OCR. Tool cắt và đặt tên đúng quy ước (`_c1/_c2/…`, `_side`).
+
+```powershell
+$env:PYTHONPATH = "src"
+.\.venv\Scripts\python.exe -m qipedc_video_preprocess.manual_cut `
+    --input src\qipedc_video_preprocess\manual_cuts.example.csv --dry-run
+# bỏ --dry-run để ghi clip thật vào split_variants/
+```
+
+Lược đồ bảng (header không phân biệt hoa/thường; xem file mẫu
+`src/qipedc_video_preprocess/manual_cuts.example.csv`):
+
+| Cột | Ý nghĩa |
+| :-- | :-- |
+| `video_id` | stem video nguồn, vd `W00738` |
+| `mode` | `multiway` (nhiều cách) \| `multiview` (front/side) \| `both` |
+| `cut_seconds` | mốc giây bắt đầu của cách 2,3… — vd `2.5` hoặc `2.5,5.0` |
+| `view_cut_seconds` | mốc giây cắt front→side. `multiview`: một mốc; `both`: một mốc mỗi cách |
+| `notes` | ghi chú (không bắt buộc) |
+
+Cắt theo **đúng** mốc giây nhập vào (không trừ safety-margin, không suy đoán), ghi
+thẳng vào `split_variants/` như kết quả đã duyệt.
+
 ---
 
 ## GIAI ĐOẠN A.2 — Chia signer + convert metadata (`qipedc2vsl400`)

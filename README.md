@@ -327,6 +327,33 @@ misclassified as single-variant**. If your clips have a different layout, dump a
 inspect the top-left corner, and adjust `roi_top_left` in `src/qipedc_video_preprocess/config.py`
 (or build a `PreprocessConfig` with an overridden ROI in a small runner script).
 
+## Manual cutting (`manual_cut`)
+
+For clips the OCR detector cannot handle (the ones it copies into `manual/`), or whenever you already
+know the exact cut times, cut them by hand from a table instead of OCR. You supply the cut points in a
+CSV/XLSX and the tool writes clips with the same naming convention as the auto splitter (`_c1/_c2/…`
+for variants, `_side` for the second camera).
+
+```powershell
+$env:PYTHONPATH = "src"
+.\.venv\Scripts\python.exe -m qipedc_video_preprocess.manual_cut `
+    --input src\qipedc_video_preprocess\manual_cuts.example.csv --dry-run
+# bỏ --dry-run để ghi clip thật vào split_variants/
+```
+
+Table schema (header case-insensitive; see `src/qipedc_video_preprocess/manual_cuts.example.csv`):
+
+| Column | Meaning |
+| --- | --- |
+| `video_id` | source video stem, e.g. `W00738` |
+| `mode` | `multiway` (variants) \| `multiview` (front/side) \| `both` |
+| `cut_seconds` | start second(s) of variant 2,3,… — e.g. `2.5` or `2.5,5.0` (for `multiway`/`both`) |
+| `view_cut_seconds` | front→side hard-cut second(s). `multiview`: one value; `both`: one per variant |
+| `notes` | free text (optional) |
+
+Cuts use the **exact** seconds you give (no safety-margin trim, no inference) and are written to
+`split_variants/` as reviewer-confirmed output.
+
 ## Stage B: keypoints (`keypoint/`), and publishing the dataset
 
 The keypoint stage is bundled in this repo so the full pipeline runs from one checkout. See

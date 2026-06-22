@@ -1,0 +1,5 @@
+video_id,mode,cut_seconds,view_cut_seconds,notes
+W00738,multiway,2.5,,Hai cach: cach 2 bat dau o giay 2.5 -> W00738_c1.mp4 + W00738_c2.mp4
+D0530,multiview,,3.0,Mot goc front->side: cat cung o giay 3.0 -> D0530.mp4 + D0530_side.mp4
+W01234,both,"5.0","2.0,7.0",Hai cach va moi cach co 1 moc front->side (2 moc = 2 cach)
+W00999,multiway,"2.5,5.0",,Ba cach: moc bat dau cua cach 2 va cach 3 -> _c1/_c2/_c3
