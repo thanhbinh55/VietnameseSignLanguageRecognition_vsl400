@@ -327,12 +327,14 @@ inspect the top-left corner, and adjust `roi_top_left` in `src/qipedc_video_prep
 
 ## Next stage: keypoints, and publishing the dataset
 
-This repo produces curated clips + metadata. Two follow-on steps live elsewhere:
+This repo produces curated clips + metadata, and bundles the keypoint stage so the full pipeline
+runs from one checkout. See `HUONG_DAN_FULL_PIPELINE.md` for the end-to-end manual run.
 
 - **Keypoint extraction + preprocessing + training** (MediaPipe Holistic `.pose` → normalized `.npy`
-  → SPOTER / SL-GCN) is done in the companion repo
+  → SPOTER / SL-GCN) lives under `keypoint/src/` (`extract_keypoints.py` → `preprocess_dataset.py`
+  → `train.py`). This code is **CC BY 4.0** from the upstream
   [VietnameseSignLanguageRecognition](https://github.com/thanhbinh55/VietnameseSignLanguageRecognition)
-  (`extract_keypoints.py` → `preprocess_dataset.py` → `train.py`).
+  project; attribution is kept in `keypoint/LICENSE` and `keypoint/CITATION.cff`.
 - **Publishing as a keypoint dataset.** `scripts/sync_public_dataset.py` maps this repo's output
   (`metadata/front_view.json` + `side_view.json`) into the published dataset layout
   (`cam_front.json` / `cam_side.json`, `labels.csv`, `gloss.csv`, `split_info.csv`), routing `_side`

@@ -1,0 +1,13 @@
+data:
+  dataset: visl_400
+  modality: pose
+  subset: cam_1
+  data_dir: data/processed/vsl_400
+  transform:
+    normalization: True
+  fps: 25
+  debug: False
+evaluation:
+  arch: spoter
+  pretrained: experiments/spoter_vsl400
+  eval_set: test

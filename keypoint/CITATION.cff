@@ -1,0 +1,46 @@
+cff-version: 1.2.0
+message: >-
+  If you use this pipeline or dataset in your research, please cite
+  using the metadata below.
+type: software
+title: >-
+  VSL Keypoint Pipeline: Preprocessing and Training for Vietnamese
+  Sign Language Recognition
+authors:
+  - name: "LVCF_VSL_KD"
+    # family-names: Nguyen
+    # given-names: Van A
+    # orcid: "https://orcid.org/0000-0000-0000-0000"
+year: 2025
+url: "https://github.com/thanhbinh55/VietnameseSignLanguageRecognition"
+license: CC-BY-4.0
+references:
+  - type: dataset
+    title: >-
+      A Multi-view Dataset for Vietnamese Word-Level Sign Language
+      Recognition
+    authors:
+      - family-names: Nguyen Quoc
+        given-names: Trung
+    year: 2026
+    doi: 10.5281/zenodo.17943574
+  - type: conference-paper
+    title: >-
+      Sign Pose-Based Transformer for Word-Level Sign Language
+      Recognition
+    authors:
+      - family-names: Boháček
+        given-names: Matyáš
+      - family-names: Hrúz
+        given-names: Marek
+    year: 2022
+    collection-title: WACV Workshops
+  - type: conference-paper
+    title: >-
+      Preprocessing Mediapipe Keypoints with Keypoint Reconstruction
+      and Anchors for Isolated Sign Language Recognition
+    authors:
+      - family-names: Roh
+        given-names: K.
+    year: 2024
+    collection-title: SignLang @ LREC-COLING

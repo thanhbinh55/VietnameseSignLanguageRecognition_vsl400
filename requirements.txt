@@ -14,3 +14,23 @@ hypothesis==6.115.5
 # Trọng số tải về Dataset/models/easyocr/ trên D: (xem setup_env.ps1).
 easyocr==1.7.2
 mediapipe==0.10.18
+
+# ---------------------------------------------------------------------------
+# GIAI ĐOẠN B — keypoint (.pose -> .npy) trong keypoint/ (mã CC BY 4.0, xem
+# keypoint/LICENSE). Các gói dưới đây nặng (torch ~2GB); chỉ cần cho extract +
+# preprocess + train, không cần cho giai đoạn tách video / convert metadata.
+# ---------------------------------------------------------------------------
+pose-format          # cung cấp CLI video_to_pose (MediaPipe Holistic) cho extract
+torch
+torchvision
+transformers
+peft
+accelerate
+simple-parsing
+pandas
+einops
+timm
+imageio
+onnx
+onnxruntime
+thop
