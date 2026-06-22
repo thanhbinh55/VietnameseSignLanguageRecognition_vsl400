@@ -1,0 +1,16 @@
+# QIPEDC -> VSL400 metadata conversion - pinned dependencies
+# All packages install into the project-local .venv on D: (never C:).
+
+openpyxl==3.1.5
+opencv-python-headless==4.11.0.86
+numpy==2.1.3
+scikit-learn==1.5.2
+requests==2.32.3
+pytest==8.3.3
+hypothesis==6.115.5
+
+# multi-variant-video-splitting: OCR con số "CÁCH" ở ROI góc trên trái.
+# EasyOCR mang theo trọng số riêng -> không cần cài binary Tesseract lên C:.
+# Trọng số tải về Dataset/models/easyocr/ trên D: (xem setup_env.ps1).
+easyocr==1.7.2
+mediapipe==0.10.18
