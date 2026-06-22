@@ -33,7 +33,7 @@ Repo này cung cấp:
 
 2. **Bộ keypoint đã tiền xử lý** (định dạng `.npy`) sẵn sàng dùng để huấn luyện, không cần chạy lại pipeline.
 
-3. **Kết quả ablation** 11 cấu hình tiền xử lý, xác định pipeline tối ưu trên VSL400.
+3. **Kết quả ablation** 14 cấu hình tiền xử lý, xác định pipeline tối ưu trên VSL400.
 
 Pipeline được phát triển dựa trên mã nguồn gốc từ **VSL400 Dataset** (Nguyen Quoc et al., 2026), mở rộng thêm:
 - Keypoint interpolation cho điểm thiếu (theo Roh et al., 2024)
@@ -44,14 +44,24 @@ Pipeline được phát triển dựa trên mã nguồn gốc từ **VSL400 Data
 
 ## Kết quả Chính
 
+### Mô hình SPOTER (Transformer-based)
+
 | Cấu hình | Test Acc | Test F1 | Ghi chú |
 | :--- | ---: | ---: | :--- |
 | Raw Baseline | 78.59% | 78.47% | Không tiền xử lý |
 | + TBL Segmentation | 81.08% | 80.86% | Cắt video theo biên ký hiệu |
-| **+ Neck Anchor Norm** | **84.08%** | **84.02%** | **Cấu hình tốt nhất trong ablation** |
-| + Combined Augmentation | 82.30% | 82.30% | Aug cộng dồn từ Neck Anchor |
+| **+ Neck Anchor Norm** | **84.08%** | **84.02%** | **Cấu hình tối ưu nhất (SPOTER)** |
+| + Combined Augmentation | 82.30% | 82.30% | Tăng cường dữ liệu cộng dồn |
 
-*Chi tiết đầy đủ 11/19 runs: xem [docs/ablation_study_report.md](docs/ablation_study_report.md)*
+### Mô hình SL-GCN (Graph-based)
+
+| Cấu hình | Test Acc | Test F1 | Ghi chú |
+| :--- | ---: | ---: | :--- |
+| SL-GCN Baseline | 67.44% | 66.88% | Không tiền xử lý |
+| + Interpolation + Best TBL | 73.26% | 73.29% | Thêm nội suy khớp và TBL |
+| **+ Preprocessing + Face** | **75.41%** | **75.23%** | **Cấu hình tối ưu nhất (SL-GCN)** |
+
+*Chi tiết đầy đủ 14/19 runs: xem [docs/ablation_study_report.md](docs/ablation_study_report.md)*
 
 ---
 
