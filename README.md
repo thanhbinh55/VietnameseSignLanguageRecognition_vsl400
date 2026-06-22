@@ -19,25 +19,51 @@ embedding, gom cụm theo ngưỡng).
 
 ## Cấu trúc thư mục
 
+### Mã nguồn (code)
+
 ```
-src/qipedc_video_preprocess/               # giai đoạn A: tách video nhiều cách / nhiều góc
-  ├─ preprocess.py                         #   CLI tách tự động (OCR + pose ensemble)
-  ├─ manual_cut.py                         #   CLI cắt THỦ CÔNG theo mốc giây tự nhập
-  └─ manual_cuts.example.csv               #   bảng mẫu cho manual_cut
-src/qipedc2vsl400/                         # giai đoạn A.2: chia signer + convert metadata
-keypoint/src/                              # giai đoạn B: trích keypoint + tiền xử lý + huấn luyện
-tests/                                     # unit test + property-based (Hypothesis)
-scripts/                                   # script phụ trợ (vd sync_public_dataset.py)
-Dataset/labels/                            # nhãn QIPEDC nguồn (*.xlsx, được track)
-Dataset/processed_videos/split_variants/           # clip đã tách (kết quả tin cậy)
-Dataset/processed_videos/split_variant_predicted/  # clip cắt bằng suy luận — cần kiểm ranh giới
-Dataset/processed_videos/manual/                    # video cần cắt thủ công
-Dataset/processed_videos/labels_split.xlsx          # bảng nhãn mới sau khi tách
-Dataset/processed_videos/metadata/                  # output: front_view.json, side_view.json, signers.csv
+src/qipedc_video_preprocess/         # GIAI ĐOẠN A — tách video nhiều cách / nhiều góc
+├─ preprocess.py                     #   CLI tách tự động (OCR + pose ensemble)
+├─ manual_cut.py                     #   CLI cắt THỦ CÔNG theo mốc giây tự nhập
+├─ manual_cuts.example.csv           #   bảng mẫu cho manual_cut
+├─ segmenter.py                      #   phân đoạn theo số CÁCH (OCR)
+├─ multiview_detector.py             #   tìm hard-cut tách góc front/side
+├─ pose_boundary.py                  #   dò ranh giới bằng pose (xác nhận hard-cut)
+└─ config.py                         #   cấu hình + ngưỡng (PreprocessConfig)
+
+src/qipedc2vsl400/                   # GIAI ĐOẠN A.2 — chia signer + convert metadata
+├─ convert.py                        #   CLI điều phối (fetch → signer → map → write → verify)
+├─ signer_extractor.py               #   YuNet + SFace, gom cụm signer
+├─ mapper.py / writer.py             #   dựng + ghi front_view.json / side_view.json
+└─ config.py                         #   cấu hình (Config)
+
+keypoint/src/                        # GIAI ĐOẠN B — keypoint (mã CC BY 4.0)
+├─ extract_keypoints.py              #   video .mp4 → .pose (MediaPipe Holistic)
+├─ preprocess_dataset.py             #   .pose → .npy chuẩn hóa (16, 54, 2)
+├─ train.py                          #   huấn luyện SPOTER / SL-GCN
+└─ configs/, models/, features/      #   cấu hình + kiến trúc model
+
+scripts/sync_public_dataset.py       # đồng bộ output → layout bộ dữ liệu công bố
+tests/                               # unit test + property-based (Hypothesis)
+setup_env.ps1                        # tạo .venv trên D: + cài requirements.txt
 ```
 
-Dữ liệu lớn (`Dataset/raw_videos/`, `Dataset/processed_videos/`, `Dataset/by_signer/`), model tải về
-(`Dataset/models/`), `.venv/` và cache đều được git-ignore. **Không cài gì lên `C:` — mọi thứ nằm
+### Dữ liệu & output (git-ignore, sinh khi chạy)
+
+```
+Dataset/labels/*.xlsx                              # nhãn QIPEDC nguồn (được track)
+Dataset/processed_videos/resize_720p/*.mp4         # video nguồn (tự đặt vào)
+Dataset/processed_videos/split_variants/           # clip đã tách (kết quả tin cậy)
+Dataset/processed_videos/split_variant_predicted/  # clip cắt bằng suy luận — cần kiểm ranh giới
+Dataset/processed_videos/manual/                   # video cần cắt thủ công
+Dataset/processed_videos/labels_split.xlsx         # bảng nhãn mới sau khi tách
+Dataset/processed_videos/metadata/                 # front_view.json, side_view.json, signers.csv
+Dataset/by_signer/                                 # clip gom theo signer (để kiểm tra)
+Dataset/models/                                    # model tải về (EasyOCR, YuNet, SFace)
+```
+
+Dữ liệu lớn (`Dataset/raw_videos/`, `Dataset/processed_videos/`, `Dataset/by_signer/`,
+`Dataset/models/`), `.venv/` và cache đều được git-ignore. **Không cài gì lên `C:` — mọi thứ nằm
 dưới project trên `D:`.**
 
 ## Cài đặt môi trường (Windows / PowerShell)
