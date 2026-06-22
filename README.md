@@ -20,9 +20,10 @@ scripts/                                   # helper / verification scripts
 Dataset/labels/                            # source QIPEDC labels (*.xlsx, tracked)
 Dataset/processed_videos/split_variants/   # split sub-clips (output of the splitter)
 Dataset/processed_videos/labels_split.xlsx # reconciled label file after splitting
-Dataset/processed_videos/inferred_review/  # clips cut by inference — check boundaries
-Dataset/processed_videos/manual_review/    # clips that need manual cutting
-Dataset/processed_videos/metadata/         # output: front_view.json, signers.csv
+Dataset/processed_videos/split_variant_predicted/  # clips cut by inference — check boundaries
+Dataset/processed_videos/manual/                    # clips that need manual cutting
+Dataset/processed_videos/metadata/                  # output: front_view.json, side_view.json, signers.csv
+keypoint/src/                              # stage B: keypoint extraction + preprocessing + training
 ```
 
 Large media (`Dataset/raw_videos/`, `Dataset/processed_videos/`, `Dataset/by_signer/`),
@@ -123,8 +124,8 @@ $env:PYTHONPATH = "src"
 
 When you add more videos (with matching rows in the label spreadsheet) and re-run, signer
 extraction normally re-embeds **every** clip — the costly step. Pass `--embeddings-cache` to keep a
-cache of per-clip face embeddings (`Dataset/final_dataset/embeddings.npz`, git-ignored) so only the
-**new** clips are embedded; the cached vectors are reused for everything seen before:
+cache of per-clip face embeddings (`Dataset/processed_videos/metadata/embeddings.npz`, git-ignored) so
+only the **new** clips are embedded; the cached vectors are reused for everything seen before:
 
 ```powershell
 $env:PYTHONPATH = "src"
@@ -148,7 +149,7 @@ filename; within one output it is always consistent.)
 
 If the full video set is too large to keep on disk at once, process it in batches: add a batch's
 videos, run, delete them, then bring in the next batch. `--batch` accumulates everything needed to
-emit and cluster each clip into a persistent **clip store** (`Dataset/final_dataset/clip_store.json`
+emit and cluster each clip into a persistent **clip store** (`Dataset/processed_videos/metadata/clip_store.json`
 + `clip_store_embeddings.npz`, both git-ignored), so the output always covers **all** clips ever
 processed — even ones whose video files have since been deleted.
 
@@ -186,7 +187,7 @@ Notes / limits:
 By default the `signer_id` *number* assigned to a given person can change between runs (clusters are
 renumbered by their smallest `VIDEO`). To keep a person's number fixed forever, add
 `--stable-signers` (with `--batch`). It maintains a persistent **signer registry**
-(`Dataset/final_dataset/signer_registry.json`, git-ignored) holding one representative embedding
+(`Dataset/processed_videos/metadata/signer_registry.json`, git-ignored) holding one representative embedding
 (centroid) per signer:
 
 ```powershell
@@ -249,8 +250,8 @@ validate config (must be on D:) → discover *.mp4 → per video:
   sample frames (~1/s) → OCR wide ROI (top-left 40%×25%) for "CÁCH" token → classify
     no "CÁCH" token            → single variant (kept as-is, original name)
     "CÁCH" + stable 1→2→…→N   → multi (confirmed)  → cut into <id>_c1.mp4 … <id>_cN.mp4
-    "CÁCH" + inferred boundary → multi (inferred)   → cut + copy to inferred_review/
-    "CÁCH" + no boundary found → manual_review       → copy original to manual_review/
+    "CÁCH" + inferred boundary → multi (inferred)   → cut + copy to split_variant_predicted/
+    "CÁCH" + no boundary found → manual              → copy original to manual/
 → write Dataset/processed_videos/labels_split.xlsx → log run + RunReport
 ```
 
@@ -300,9 +301,10 @@ CLI flags:
 Dataset/processed_videos/split_variants/<id>.mp4       # single-variant clips (kept as-is)
 Dataset/processed_videos/split_variants/<id>_c1.mp4 …  # one sub-clip per variant (confirmed multi)
 Dataset/processed_videos/labels_split.xlsx             # reconciled labels (STT renumbered 1..M)
-Dataset/processed_videos/inferred_review/<id>_cN.mp4   # sub-clips cut by inference (check boundaries)
-Dataset/processed_videos/inferred_review/<id>.mp4      # original alongside, for comparison
-Dataset/processed_videos/manual_review/<id>.mp4        # original of clips that need manual cutting
+Dataset/processed_videos/split_variant_predicted/<id>_cN.mp4   # sub-clips cut by inference (check boundaries)
+Dataset/processed_videos/split_variant_predicted/<id>.mp4      # original alongside, for comparison
+Dataset/processed_videos/manual/<id>.mp4               # original of clips that need manual cutting
+Dataset/processed_videos/manual/review_clips/<id>/     # pre-cut preview clips for review
 Dataset/logs/preprocess_<timestamp>.log                # run log + RunReport summary
 ```
 
@@ -311,8 +313,8 @@ The three output categories:
 | Category | Meaning | Action needed |
 | --- | --- | --- |
 | `split_variants/` | OCR confirmed boundary (≥2 stable frames per variant) | None — ready to use |
-| `inferred_review/` | Boundary inferred from stable blocks; OCR did not read full sequence | Review cut point |
-| `manual_review/` | "CÁCH" overlay seen but boundary could not be determined | Cut manually |
+| `split_variant_predicted/` | Boundary inferred from stable blocks; OCR did not read full sequence | Review cut point |
+| `manual/` | "CÁCH" overlay seen but boundary could not be determined | Cut manually |
 
 ### Calibrating the OCR ROI (important)
 
@@ -325,16 +327,17 @@ misclassified as single-variant**. If your clips have a different layout, dump a
 inspect the top-left corner, and adjust `roi_top_left` in `src/qipedc_video_preprocess/config.py`
 (or build a `PreprocessConfig` with an overridden ROI in a small runner script).
 
-## Next stage: keypoints, and publishing the dataset
+## Stage B: keypoints (`keypoint/`), and publishing the dataset
 
-This repo produces curated clips + metadata, and bundles the keypoint stage so the full pipeline
-runs from one checkout. See `HUONG_DAN_FULL_PIPELINE.md` for the end-to-end manual run.
+The keypoint stage is bundled in this repo so the full pipeline runs from one checkout. See
+`HUONG_DAN_FULL_PIPELINE.md` for the end-to-end manual run.
 
 - **Keypoint extraction + preprocessing + training** (MediaPipe Holistic `.pose` → normalized `.npy`
   → SPOTER / SL-GCN) lives under `keypoint/src/` (`extract_keypoints.py` → `preprocess_dataset.py`
   → `train.py`). This code is **CC BY 4.0** from the upstream
   [VietnameseSignLanguageRecognition](https://github.com/thanhbinh55/VietnameseSignLanguageRecognition)
-  project; attribution is kept in `keypoint/LICENSE` and `keypoint/CITATION.cff`.
+  project; attribution is kept in `keypoint/LICENSE` and `keypoint/CITATION.cff`. Its dependencies are
+  included in `requirements.txt` (the "GIAI ĐOẠN B" block).
 - **Publishing as a keypoint dataset.** `scripts/sync_public_dataset.py` maps this repo's output
   (`metadata/front_view.json` + `side_view.json`) into the published dataset layout
   (`cam_front.json` / `cam_side.json`, `labels.csv`, `gloss.csv`, `split_info.csv`), routing `_side`
@@ -566,9 +569,9 @@ từ `Dataset\labels\*.xlsx`, ghi clip ra `Dataset\processed_videos\split_varian
 Dataset\processed_videos\split_variants\<id>.mp4       # video một cách (giữ nguyên tên)
 Dataset\processed_videos\split_variants\<id>_c1.mp4 …  # mỗi cách một video con (multi xác nhận)
 Dataset\processed_videos\labels_split.xlsx             # bảng nhãn mới (STT đánh lại 1..M)
-Dataset\processed_videos\inferred_review\<id>_cN.mp4   # clip đã cắt bằng suy luận (cần kiểm ranh giới)
-Dataset\processed_videos\inferred_review\<id>.mp4      # bản gốc đặt cạnh để so sánh
-Dataset\processed_videos\manual_review\<id>.mp4        # bản gốc video cần cắt thủ công
+Dataset\processed_videos\split_variant_predicted\<id>_cN.mp4   # clip đã cắt bằng suy luận (cần kiểm ranh giới)
+Dataset\processed_videos\split_variant_predicted\<id>.mp4      # bản gốc đặt cạnh để so sánh
+Dataset\processed_videos\manual\<id>.mp4               # bản gốc video cần cắt thủ công
 Dataset\logs\preprocess_<timestamp>.log                # log + RunReport
 ```
 
@@ -577,8 +580,8 @@ Ba nhóm kết quả:
 | Nhóm | Ý nghĩa | Việc cần làm |
 | --- | --- | --- |
 | `split_variants/` | OCR xác nhận ranh giới (≥2 frame ổn định mỗi cách) | Không cần — dùng ngay |
-| `inferred_review/` | Ranh giới suy luận từ khối ổn định; OCR không đọc trọn dãy số | Kiểm tra điểm cắt |
-| `manual_review/` | Có nhãn "CÁCH" nhưng không xác định được ranh giới | Cắt tay |
+| `split_variant_predicted/` | Ranh giới suy luận từ khối ổn định; OCR không đọc trọn dãy số | Kiểm tra điểm cắt |
+| `manual/` | Có nhãn "CÁCH" nhưng không xác định được ranh giới | Cắt tay |
 
 ### Hiệu chỉnh ROI con số (quan trọng)
 
