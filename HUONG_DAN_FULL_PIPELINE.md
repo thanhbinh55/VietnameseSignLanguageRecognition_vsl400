@@ -79,15 +79,10 @@ Với video OCR không xử lý được (nằm trong `manual/`), hoặc khi đ�
 mốc cắt, dùng `manual_cut` để **tự khai báo điểm cắt** trong một bảng CSV/XLSX —
 không dùng OCR. Tool cắt và đặt tên đúng quy ước (`_c1/_c2/…`, `_side`).
 
-```powershell
-$env:PYTHONPATH = "src"
-.\.venv\Scripts\python.exe -m qipedc_video_preprocess.manual_cut `
-    --input src\qipedc_video_preprocess\manual_cuts.example.csv --dry-run
-# bỏ --dry-run để ghi clip thật vào split_variants/
-```
+- **Code:** `src/qipedc_video_preprocess/manual_cut.py`
+- **Bảng mẫu:** `src/qipedc_video_preprocess/manual_cuts.example.csv`
 
-Lược đồ bảng (header không phân biệt hoa/thường; xem file mẫu
-`src/qipedc_video_preprocess/manual_cuts.example.csv`):
+**Bước 1 — tạo bảng cắt** (header không phân biệt hoa/thường):
 
 | Cột | Ý nghĩa |
 | :-- | :-- |
@@ -96,6 +91,25 @@ Lược đồ bảng (header không phân biệt hoa/thường; xem file mẫu
 | `cut_seconds` | mốc giây bắt đầu của cách 2,3… — vd `2.5` hoặc `2.5,5.0` |
 | `view_cut_seconds` | mốc giây cắt front→side. `multiview`: một mốc; `both`: một mốc mỗi cách |
 | `notes` | ghi chú (không bắt buộc) |
+
+Ví dụ nội dung (`manual_cuts.csv`):
+
+```csv
+video_id,mode,cut_seconds,view_cut_seconds,notes
+W00738,multiway,2.5,,Cach 2 bat dau o giay 2.5  -> W00738_c1.mp4 + W00738_c2.mp4
+D0530,multiview,,3.0,Cat front->side o giay 3.0 -> D0530.mp4 + D0530_side.mp4
+W01234,both,5.0,"2.0,7.0",2 cach, moi cach 1 moc front->side
+W00999,multiway,"2.5,5.0",,3 cach -> _c1/_c2/_c3
+```
+
+**Bước 2 — chạy:**
+
+```powershell
+$env:PYTHONPATH = "src"
+.\.venv\Scripts\python.exe -m qipedc_video_preprocess.manual_cut `
+    --input Dataset\processed_videos\manual_cuts.csv --dry-run
+# bỏ --dry-run để ghi clip thật vào split_variants/
+```
 
 Cắt theo **đúng** mốc giây nhập vào (không trừ safety-margin, không suy đoán), ghi
 thẳng vào `split_variants/` như kết quả đã duyệt.

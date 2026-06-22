@@ -21,6 +21,9 @@ embedding, gom cụm theo ngưỡng).
 
 ```
 src/qipedc_video_preprocess/               # giai đoạn A: tách video nhiều cách / nhiều góc
+  ├─ preprocess.py                         #   CLI tách tự động (OCR + pose ensemble)
+  ├─ manual_cut.py                         #   CLI cắt THỦ CÔNG theo mốc giây tự nhập
+  └─ manual_cuts.example.csv               #   bảng mẫu cho manual_cut
 src/qipedc2vsl400/                         # giai đoạn A.2: chia signer + convert metadata
 keypoint/src/                              # giai đoạn B: trích keypoint + tiền xử lý + huấn luyện
 tests/                                     # unit test + property-based (Hypothesis)
@@ -62,6 +65,11 @@ Một số video QIPEDC gộp **2–3 cách biểu diễn** của **cùng một 
 bên trái** ("CÁCH 1", "CÁCH 2", …) đánh dấu từng cách. Công đoạn này tự phát hiện con số bằng OCR, tách
 video nhiều cách thành nhiều video con (mỗi cách một file), đồng thời tách **nhiều góc quay**
 (front/side), và xuất bảng nhãn mới.
+
+Giai đoạn A có **hai công cụ tách**:
+
+- **Tách tự động** — `qipedc_video_preprocess.preprocess` ([`src/qipedc_video_preprocess/preprocess.py`](src/qipedc_video_preprocess/preprocess.py)): dùng OCR + pose ensemble tự tìm điểm cắt.
+- **Cắt thủ công** — `qipedc_video_preprocess.manual_cut` ([`src/qipedc_video_preprocess/manual_cut.py`](src/qipedc_video_preprocess/manual_cut.py)): bạn tự nhập mốc giây cắt (nhiều cách / nhiều view) trong một bảng CSV/XLSX, không dùng OCR — xem mục [Cắt thủ công](#cắt-thủ-công-theo-mốc-tự-nhập-manual_cut) bên dưới.
 
 ### Cơ chế phát hiện
 
@@ -130,15 +138,10 @@ Với video OCR không xử lý được (nằm trong `manual/`), hoặc khi đ�
 `manual_cut` để **tự khai báo điểm cắt** trong một bảng CSV/XLSX — không dùng OCR. Tool cắt và đặt tên
 đúng quy ước (`_c1/_c2/…`, `_side`).
 
-```powershell
-$env:PYTHONPATH = "src"
-.\.venv\Scripts\python.exe -m qipedc_video_preprocess.manual_cut `
-    --input src\qipedc_video_preprocess\manual_cuts.example.csv --dry-run
-# bỏ --dry-run để ghi clip thật vào split_variants/
-```
+- **Code:** [`src/qipedc_video_preprocess/manual_cut.py`](src/qipedc_video_preprocess/manual_cut.py)
+- **Bảng mẫu:** [`src/qipedc_video_preprocess/manual_cuts.example.csv`](src/qipedc_video_preprocess/manual_cuts.example.csv)
 
-Lược đồ bảng (header không phân biệt hoa/thường; xem file mẫu
-`src/qipedc_video_preprocess/manual_cuts.example.csv`):
+**Bước 1 — tạo bảng cắt** (header không phân biệt hoa/thường):
 
 | Cột | Ý nghĩa |
 | :-- | :-- |
@@ -148,8 +151,27 @@ Lược đồ bảng (header không phân biệt hoa/thường; xem file mẫu
 | `view_cut_seconds` | mốc giây cắt front→side. `multiview`: một mốc; `both`: một mốc mỗi cách |
 | `notes` | ghi chú (không bắt buộc) |
 
+Ví dụ nội dung (`manual_cuts.csv`):
+
+```csv
+video_id,mode,cut_seconds,view_cut_seconds,notes
+W00738,multiway,2.5,,Cach 2 bat dau o giay 2.5  -> W00738_c1.mp4 + W00738_c2.mp4
+D0530,multiview,,3.0,Cat front->side o giay 3.0 -> D0530.mp4 + D0530_side.mp4
+W01234,both,5.0,"2.0,7.0",2 cach, moi cach 1 moc front->side -> _c1/_c1_side + _c2/_c2_side
+W00999,multiway,"2.5,5.0",,3 cach (moc bat dau cach 2 va cach 3) -> _c1/_c2/_c3
+```
+
+**Bước 2 — chạy** (thử `--dry-run` để xem kế hoạch trước, bỏ đi để ghi clip thật):
+
+```powershell
+$env:PYTHONPATH = "src"
+.\.venv\Scripts\python.exe -m qipedc_video_preprocess.manual_cut `
+    --input Dataset\processed_videos\manual_cuts.csv --dry-run
+# bỏ --dry-run để ghi clip thật vào split_variants/
+```
+
 Cắt theo **đúng** mốc giây nhập vào (không trừ safety-margin, không suy đoán), ghi thẳng vào
-`split_variants/` như kết quả đã duyệt.
+`split_variants/` như kết quả đã duyệt. Cờ khác: `--project-root <path>`.
 
 ---
 
