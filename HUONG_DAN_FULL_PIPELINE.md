@@ -211,6 +211,23 @@ $env:PYTHONPATH = "keypoint\src"
 **Output:** `Keypoint/processed/{cam_front,cam_side}/{video_id}_preprocessed.npy`,
 shape **`(16, 54, 2)`** float32 (16 frame × 54 joint × (x,y); Neck-anchor norm, bỏ mặt).
 
+`preprocess_dataset.py` cũng ghi `Keypoint/processed/cam_front.json` + `cam_side.json`
+(map `video_id → video/.npy`), nhưng dùng **đường dẫn tuyệt đối** của máy đang chạy.
+
+### B2.1 — Đổi đường dẫn trong cam_*.json sang tương đối (bước hậu kỳ)
+
+Trước khi phát hành, đổi field `video`/`pose` trong 2 file đó sang đường dẫn **tương
+đối theo gốc folder Public** để máy khác dùng được:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\relativize_keypoint_json.py `
+    --public-root "<Public>" --dry-run
+# bỏ --dry-run để ghi thật
+```
+
+Kết quả: `"pose": "Keypoint/processed/cam_front/<id>_preprocessed.npy"`,
+`"video": "Processed/metadata/cam_front/<id>.mp4"` (dùng `/`, không phụ thuộc ổ đĩa).
+
 ### B3. Huấn luyện (tùy chọn)
 
 ```powershell
