@@ -101,9 +101,9 @@ pip install -r requirements.txt
 ## Chạy nhanh với keypoint đã xử lý
 
 ```bash
-# Tải keypoint processed từ Drive về data/preprocessed_vsl/
+# Tải keypoint processed từ Drive về data/processed/vsl_400/
 # Chỉnh data_dir trong config:
-# data.data_dir: "data/preprocessed_vsl"
+# data.data_dir: "data/processed/vsl_400"
 
 python src/train.py --config_path src/configs/training/spoter.yaml
 ```
@@ -142,7 +142,7 @@ python src/extract_keypoints.py --video_dir data/raw/your_video --num_workers 4
 # Thực hiện các bước chuẩn hóa (ví dụ: Neck Anchor) và lưu thành file .npy
 python src/preprocess_dataset.py \
     --config_path src/configs/training/spoter.yaml \
-    --output_dir data/preprocessed_vsl
+    --output_dir data/processed/vsl_400
 ```
 
 ### Bước 4: Huấn luyện mô hình
@@ -174,7 +174,7 @@ python src/demo_web.py --config_path src/configs/inference/spoter.yaml
 ## Cấu trúc Repo
 
 ```
-vsl-keypoint-pipeline/
+VietnameseSignLanguageRecognition/
 ├── README.md                     ← bạn đang ở đây
 ├── CITATION.cff                  ← metadata citation chuẩn
 ├── LICENSE                       ← CC BY 4.0
