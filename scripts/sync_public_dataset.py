@@ -78,17 +78,51 @@ def _parent_video_id(video_id: str) -> str:
     return _VARIANT_RE.sub("", base)
 
 
-def _to_public_record(rec: dict) -> dict:
+def load_frame_spans(completion_dir: "Path | None") -> dict[str, tuple[int, int]]:
+    """Đọc completion manifest → ``video_id (clip) -> (start_frame, end_frame)``.
+
+    Bộ tách video ghi mỗi clip con (``_cN`` / ``_side``) vào
+    ``<completion_dir>/<base>.json`` với offset frame **trong video gốc** (key
+    ``start_frame`` / ``end_frame`` của từng entry trong ``outputs``, tên file
+    ``<id>.mp4``). Đây là nguồn chính xác để truy vết vị trí trong video gốc.
+
+    Trả về dict rỗng nếu không cấu hình/không có manifest (khi đó dùng mặc định
+    ``0 .. num_frames-1``).
+    """
+    spans: dict[str, tuple[int, int]] = {}
+    if completion_dir is None or not completion_dir.is_dir():
+        return spans
+    for path in completion_dir.glob("*.json"):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            for item in payload.get("outputs", []):
+                filename = str(item.get("filename", ""))
+                if not filename.endswith(".mp4"):
+                    continue
+                vid = filename[: -len(".mp4")]
+                start = int(item["start_frame"])
+                end = int(item["end_frame"])
+                spans[vid] = (start, end)
+        except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError):
+            continue
+    return spans
+
+
+def _to_public_record(rec: dict, frame_spans: dict[str, tuple[int, int]]) -> dict:
     """Đổi một record front_view/side_view → format cam_front/cam_side công bố.
 
     Giữ nguyên mọi field từ converter; đổi tên ``length_seconds`` → ``length`` và
-    thêm truy vết ``parent_video_id`` / ``start_frame`` / ``end_frame``. Vì repo
-    không lưu offset frame của clip con trong metadata, truy vết mặc định phủ toàn
-    clip (``0 .. num_frames-1``); ``parent_video_id`` suy ra từ tên.
+    thêm truy vết ``parent_video_id`` / ``start_frame`` / ``end_frame``.
+
+    ``start_frame`` / ``end_frame`` là vị trí **trong video gốc** (parent), lấy từ
+    completion manifest (*frame_spans*). Vd cách 2/3 hay góc phụ có ``start_frame``
+    khác 0. Nếu không có manifest cho clip đó (vd clip một-cách ở đầu video), mặc
+    định phủ toàn clip ``0 .. num_frames-1``.
     """
     video_id = str(rec.get("video_id", ""))
     num_frames = int(rec.get("num_frames", 0) or 0)
     length = rec.get("length_seconds", rec.get("length", 0.0))
+    start_frame, end_frame = frame_spans.get(video_id, (0, max(0, num_frames - 1)))
     return {
         "video_id": video_id,
         "signer_id": rec.get("signer_id", ""),
@@ -101,8 +135,8 @@ def _to_public_record(rec: dict) -> dict:
         "id": rec.get("id", ""),
         "num_frames": num_frames,
         "parent_video_id": _parent_video_id(video_id),
-        "start_frame": 0,
-        "end_frame": max(0, num_frames - 1),
+        "start_frame": start_frame,
+        "end_frame": end_frame,
     }
 
 
@@ -238,6 +272,13 @@ def main(argv=None) -> int:
         "<project-root>/Dataset/processed_videos/metadata).",
     )
     parser.add_argument(
+        "--completion-dir",
+        type=Path,
+        default=None,
+        help="Thư mục completion manifest (.split_completed) để lấy start/end_frame "
+        "trong video gốc. Mặc định: <metadata-dir>/../.split_completed.",
+    )
+    parser.add_argument(
         "--split-seed",
         default="vsl-qipedc",
         help="Seed chia train/val/test (đổi seed → chia khác, vẫn xác định).",
@@ -253,6 +294,10 @@ def main(argv=None) -> int:
         args.metadata_dir or project_root / "Dataset" / "processed_videos" / "metadata"
     ).resolve()
 
+    completion_dir = (
+        args.completion_dir or metadata_dir.parent / ".split_completed"
+    ).resolve()
+
     front = _load_view_json(metadata_dir / "front_view.json")
     side = _load_view_json(metadata_dir / "side_view.json")
     if not front and not side:
@@ -263,11 +308,15 @@ def main(argv=None) -> int:
         )
         return 1
 
-    print(f"Đọc metadata: front={len(front)} record, side={len(side)} record")
+    frame_spans = load_frame_spans(completion_dir)
+    print(
+        f"Đọc metadata: front={len(front)} record, side={len(side)} record; "
+        f"frame span từ manifest: {len(frame_spans)} clip ({completion_dir.name})"
+    )
 
     # 1) cam_front.json / cam_side.json (transform từ converter output).
-    pub_front = [_to_public_record(r) for r in front]
-    pub_side = [_to_public_record(r) for r in side]
+    pub_front = [_to_public_record(r, frame_spans) for r in front]
+    pub_side = [_to_public_record(r, frame_spans) for r in side]
     meta_out = public_root / "Processed" / "metadata"
     _write_json(pub_front, meta_out / "cam_front.json", args.dry_run, "cam_front.json")
     if pub_side:
