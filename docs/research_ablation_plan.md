@@ -40,7 +40,7 @@ Ablation study này nhằm:
 
 ## 3. Thiết kế Greedy Ablation (19 Runs)
 
-Thay vì grid search đầy đủ (160+ runs ≈ hàng tháng chạy), thiết kế này áp dụng mô hình tiệm tiến (greedy): mỗi phase tìm cấu hình tốt nhất rồi dùng nó làm nền cho phase tiếp theo.
+Do rào cản về chi phí tính toán của phương pháp tìm kiếm dạng lưới (grid search đầy đủ với 160+ runs), nghiên cứu này áp dụng chiến lược tìm kiếm tiệm tiến (greedy ablation): cấu hình tối ưu của từng giai đoạn (phase) sẽ được sử dụng làm cơ sở cho giai đoạn tiếp theo.
 
 ```mermaid
 flowchart TD

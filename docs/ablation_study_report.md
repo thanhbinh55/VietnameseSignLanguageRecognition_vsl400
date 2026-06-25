@@ -106,11 +106,11 @@ Tất cả runs trong phase này sử dụng cấu hình TBL θ=160°, τb=400ms
 
 - **Keypoint Interpolation (Run 07 vs 03):** Val Acc tăng nhẹ (+0.60%), nhưng Test Acc giảm nhẹ (−0.28%). Nội suy đơn thuần không cải thiện rõ rệt khi anchor vẫn là Box — có thể vì Box normalization đã xử lý một phần sự không nhất quán của keypoint thiếu.
 
-- **Neck Anchor (Run 08) — kết quả nổi bật nhất toàn bộ ablation:** Test Acc tăng **+3.00 điểm** so với Run 03 và **+4.57 điểm** so với Raw Baseline. Val Acc cũng cải thiện (+0.76%). Đây là cấu hình được chọn làm điểm neo cho Phase 3.
+- **Neck Anchor (Run 08) — cấu hình đạt kết quả cao nhất trong thực nghiệm ablation:** Test Acc tăng **+3.00 điểm** so với Run 03 và **+4.57 điểm** so với Raw Baseline. Val Acc cũng cải thiện (+0.76%). Cấu hình này được chọn làm cơ sở cho Phase 3.
 
-- **Nose Anchor (Run 09) vs Box (Run 03):** Gần như không cải thiện ở Test (−0.37 điểm), kém hơn Neck Anchor đáng kể. Nose là điểm dễ bị che khuất và ổn định hơn cổ trong không gian ký hiệu nên kém phù hợp làm anchor.
+- **Nose Anchor (Run 09) vs Box (Run 03):** Gần như không ghi nhận sự cải thiện trên tập Test (−0.37 điểm), kém hơn Neck Anchor đáng kể. Mũi là điểm dễ bị che khuất và kém ổn định hơn vùng cổ trong không gian thực hiện ký hiệu, do đó không phù hợp làm điểm chuẩn hóa (anchor).
 
-> **Kết luận Phase 2:** Neck Anchor Normalization kết hợp Keypoint Interpolation (cấu hình Run 08) là pipeline tốt nhất và được sử dụng làm nền cho Phase 3.
+> **Kết luận Phase 2:** Kỹ thuật Neck Anchor Normalization kết hợp Keypoint Interpolation (cấu hình Run 08) đem lại hiệu quả cao nhất và được sử dụng làm cơ sở cho Phase 3.
 
 ---
 
@@ -118,7 +118,7 @@ Tất cả runs trong phase này sử dụng cấu hình TBL θ=160°, τb=400ms
 
 **Mục tiêu:** Đánh giá đóng góp riêng lẻ và tổng hợp của từng kỹ thuật tăng cường dữ liệu.
 
-Tất cả runs dùng Keypoint Interpolation + Neck Anchor từ Run 08 làm nền. Điểm so sánh: **Run 07** (cùng interpolation + Box anchor, để cách ly tác động aug khỏi tác động anchor).
+Tất cả runs dùng Keypoint Interpolation + Neck Anchor từ Run 08 làm nền. Điểm so sánh: **Run 07** (cùng interpolation + Box anchor, nhằm cách ly tác động của augmentation khỏi tác động của anchor).
 
 | Run | Cấu hình aug | Val Acc | Val F1 | Test Acc | Test F1 | Trạng thái |
 | :--- | :--- | ---: | ---: | ---: | ---: | :--- |
@@ -132,19 +132,19 @@ Tất cả runs dùng Keypoint Interpolation + Neck Anchor từ Run 08 làm nề
 
 **Phân tích:**
 
-- **Spatial Aug (Run 10):** Cải thiện Test Acc +0.81 điểm so với Run 07. Kỹ thuật quen thuộc nhất, cho kết quả ổn định.
+- **Spatial Aug (Run 10):** Cải thiện Test Acc +0.81 điểm so với Run 07. Kỹ thuật tăng cường không gian tiêu chuẩn này mang lại sự cải thiện ổn định.
 
-- **Perspective Skew (Run 11):** Cải thiện Test Acc +0.47 điểm. Tác động vừa phải, nhưng dương — mô phỏng góc nhìn khác nhau khi ghi hình có ích.
+- **Perspective Skew (Run 11):** Cải thiện Test Acc +0.47 điểm. Ghi nhận mức cải thiện tích cực, cho thấy việc mô phỏng tính đa dạng của góc nhìn máy ảnh mang lại hiệu quả.
 
-- **Kinematic Aug (Run 12):** Test Acc giảm nhẹ −0.25 điểm. Xoay khớp tay độc lập ±4° với p=0.3 không giúp ích, có thể vì biên độ nhỏ và thay đổi tương quan giữa các khớp không tự nhiên.
+- **Kinematic Aug (Run 12):** Test Acc giảm nhẹ −0.25 điểm. Việc xoay khớp tay độc lập ±4° với p=0.3 không mang lại sự cải thiện hiệu năng. Nguyên nhân có thể do sự thay đổi cục bộ này làm phá vỡ tính tương quan tự nhiên giữa các khớp trong chuyển động ký hiệu.
 
-- **Gaussian Noise (Run 13):** Test Acc giảm −1.09 điểm so với Run 07. Thêm noise vào keypoint đã chuẩn hóa không cải thiện và làm mất thông tin cử chỉ tinh tế.
+- **Gaussian Noise (Run 13):** Test Acc giảm −1.09 điểm so với Run 07. Việc bổ sung nhiễu ngẫu nhiên vào tọa độ keypoint đã được chuẩn hóa làm suy giảm chất lượng thông tin của các cử chỉ tinh tế.
 
-- **Combined (Run 14):** Test Acc +1.50 điểm so với Run 07. Dù Kinematic và Gaussian độc lập cho kết quả âm, khi kết hợp tất cả lại vẫn có tác dụng cộng dồn dương — hàm ý rằng tính đa dạng của tập aug quan trọng hơn từng phép biến đổi riêng lẻ.
+- **Combined (Run 14):** Test Acc +1.50 điểm so với Run 07. Dù Kinematic và Gaussian độc lập cho kết quả âm, khi kết hợp tất cả các kỹ thuật lại vẫn tạo ra tác động cộng hưởng dương. Điều này chỉ ra rằng sự đa dạng của tổ hợp augmentation đóng vai trò quan trọng hơn hiệu quả của từng phép biến đổi riêng lẻ.
 
-- **Facial Landmarks (Run 15 vs 14):** Test Acc giảm −1.34 điểm khi thêm 20 keypoint khuôn mặt vào Combined config. Không nhất quán với kết quả cải thiện facial trong công trình QIPEDC-VSL. Có thể do: (a) VSL400 cam_1 chụp toàn thân ở khoảng cách xa nên độ phân giải khuôn mặt thấp và keypoint mặt kém tin cậy hơn; (b) hidden_dim=108 không đủ để xử lý 74 điểm thay vì 54.
+- **Facial Landmarks (Run 15 vs 14):** Test Acc giảm −1.34 điểm khi bổ sung 20 keypoint khuôn mặt vào cấu hình Combined. Kết quả này trái ngược với các cải thiện quan sát được trong công trình QIPEDC-VSL. Nguyên nhân khả dĩ: (a) Dữ liệu VSL400 (cam_1) ghi hình toàn thân ở khoảng cách xa, dẫn đến độ phân giải vùng khuôn mặt thấp và giảm độ tin cậy của keypoint; (b) Tham số hidden_dim=108 của mô hình chưa đủ năng lực biểu diễn để xử lý không gian đặc trưng lớn hơn (74 điểm thay vì 54 điểm).
 
-> **Kết luận Phase 3:** Cấu hình Combined Augmentation (Run 14) là tốt nhất. Facial Landmarks không cải thiện trong thiết lập này và không được đưa vào pipeline đề xuất.
+> **Kết luận Phase 3:** Cấu hình Combined Augmentation (Run 14) đem lại hiệu năng cao nhất. Nhóm đặc trưng Facial Landmarks không mang lại cải thiện trong thiết lập hiện tại và do đó không được đưa vào pipeline đề xuất.
 
 ---
 
@@ -159,8 +159,8 @@ Tất cả runs dùng Keypoint Interpolation + Neck Anchor từ Run 08 làm nề
 | Run 18 | SL-GCN + Interpolation + Best TBL + Face | **86.20%** | **86.63%** | **75.41%** | **75.23%** | ✅ Completed |
 
 **Nhận xét:** 
-* **Tác động của Keypoint Interpolation (Run 17 vs Run 16)**: Việc bổ sung cơ chế nội suy điểm thiếu giúp cải thiện hiệu năng vượt trội cho SL-GCN (tăng **+5.62% Val Acc** và **+5.82% Test Acc**). Kết quả này củng cố tính tổng quát của bước tiền xử lý nội suy đối với mô hình đồ thị vốn nhạy cảm với việc mất kết nối keypoint.
-* **Tác động của Face Landmarks (Run 18 vs Run 17)**: Khác với kiến trúc SPOTER (nơi landmarks khuôn mặt có xu hướng gây nhiễu), trên mô hình SL-GCN, Face Landmarks giúp tăng thêm đáng kể hiệu năng (tăng **+2.21% Val Acc** và **+2.15% Test Acc**). Điều này chỉ ra cấu trúc liên kết đồ thị cục bộ của GCN giúp phân tách và khai thác tốt thông tin biểu cảm khuôn mặt mà không làm bão hòa khả năng biểu diễn của mô hình.
+* **Tác động của Keypoint Interpolation (Run 17 vs Run 16)**: Việc bổ sung cơ chế nội suy điểm thiếu giúp cải thiện hiệu năng rõ rệt cho SL-GCN (tăng **+5.62% Val Acc** và **+5.82% Test Acc**). Kết quả này củng cố tính tổng quát của bước tiền xử lý nội suy đối với mô hình đồ thị vốn nhạy cảm với việc mất kết nối keypoint.
+* **Tác động của Face Landmarks (Run 18 vs Run 17)**: Khác với kiến trúc SPOTER (nơi landmarks khuôn mặt có xu hướng làm giảm hiệu năng), trên mô hình SL-GCN, Face Landmarks ghi nhận sự cải thiện hiệu năng (tăng **+2.21% Val Acc** và **+2.15% Test Acc**). Điều này chỉ ra cấu trúc liên kết đồ thị cục bộ của GCN giúp phân tách và khai thác tốt thông tin biểu cảm khuôn mặt mà không làm bão hòa khả năng biểu diễn của mô hình.
 * **So sánh chéo giữa hai kiến trúc**: Mặc dù Run 18 là cấu hình tốt nhất của SL-GCN (Test Acc 75.41%), nó vẫn thấp hơn SPOTER Run 08 (Test Acc 84.08%). Sự chênh lệch này đến từ cơ chế Self-Attention toàn cục của Transformer cho phép SPOTER học các mối quan hệ khoảng cách xa linh hoạt hơn cấu trúc đồ thị tĩnh định sẵn của GCN.
 
 ---

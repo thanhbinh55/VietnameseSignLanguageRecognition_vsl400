@@ -65,46 +65,123 @@ Pipeline được phát triển dựa trên mã nguồn gốc từ **VSL400 Data
 
 ---
 
-## Dataset
+## Dataset (VSL Keypoint Dataset)
 
-Bộ dữ liệu keypoint được lưu trữ riêng (không nằm trong repo này do kích thước):
+Dự án này sử dụng bộ dữ liệu **VSL Keypoint Dataset** được trích xuất từ nguồn video QIPEDC. Vì lý do tối ưu lưu trữ và bảo vệ danh tính (loại bỏ khuôn mặt), dữ liệu được phân phối dưới dạng **Pose Keypoint** thay vì video gốc, cho phép bắt tay vào huấn luyện mô hình ngay lập tức.
 
-| Tài nguyên | Trạng thái | Link |
-| :--- | :--- | :--- |
-| Keypoint processed (`.npy`) | 🟡 Preview trên Google Drive | [🔗 Drive Folder](https://drive.google.com/drive/folders/1M_H0s_C6WhI4xfWCaXYv8REpTVmMJ0QG?usp=drive_link) |
-| Keypoint raw (`.pose`) | 🟡 Preview trên Google Drive | [🔗 Drive Folder](https://drive.google.com/drive/folders/1M_H0s_C6WhI4xfWCaXYv8REpTVmMJ0QG?usp=drive_link) |
-| Metadata (cam_front.json, gloss.csv) | ✅ Có sẵn | [🔗 Drive Folder](https://drive.google.com/drive/folders/1M_H0s_C6WhI4xfWCaXYv8REpTVmMJ0QG?usp=drive_link) |
-| Bản chính thức (Zenodo/HF) | 🔜 Sắp có | — |
-| Video gốc | ❌ Không phân phối | Xem DATASET_CARD.md |
+**Thông tin tóm tắt:**
+- **Quy mô:** 1.051 clip (994 từ vựng duy nhất) từ 5 người ký.
+- **Phân chia:** Train (786) / Val (110) / Test (155).
+- **Định dạng:** 
+  - **Thô (`.pose`)**: Trích xuất từ MediaPipe Holistic.
+  - **Đã tiền xử lý (`.npy`)**: Tensor có shape `(16, 54, 2)` tương ứng `(frames, joints, tọa độ x-y)` đã được chuẩn hóa.
 
-**[→ Xem DATASET_CARD.md đầy đủ](https://drive.google.com/file/d/1HS4Js4pvt8A2zL6eozcuf9zTfAIUIfxK/view?usp=drive_link)**
+Bộ dữ liệu được lưu trữ trên Google Drive:
+
+| Tài nguyên | Định dạng | Trạng thái | Link |
+| :--- | :--- | :--- | :--- |
+| Keypoint processed | `.npy` | 🟡 Preview | [🔗 Drive Folder](https://drive.google.com/drive/folders/1M_H0s_C6WhI4xfWCaXYv8REpTVmMJ0QG?usp=drive_link) |
+| Keypoint raw | `.pose` | 🟡 Preview | [🔗 Drive Folder](https://drive.google.com/drive/folders/1M_H0s_C6WhI4xfWCaXYv8REpTVmMJ0QG?usp=drive_link) |
+| Metadata | `.json`, `.csv` | ✅ Có sẵn | [🔗 Drive Folder](https://drive.google.com/drive/folders/1M_H0s_C6WhI4xfWCaXYv8REpTVmMJ0QG?usp=drive_link) |
+
+
+**[→ Xem DATASET_CARD.md đầy đủ để biết thêm chi tiết schema và quyền sử dụng](https://drive.google.com/file/d/1ioGDLfFCPvOaDSrBmaEEhlI5M0UFriBy/view?usp=drive_link)**
 
 ---
 
 ## Cài đặt
 
+**1. Clone repo**
 ```bash
-# 1. Clone repo
 git clone https://github.com/thanhbinh55/VietnameseSignLanguageRecognition.git
 cd VietnameseSignLanguageRecognition
+```
 
-# 2. Tạo virtual environment
+**2. Tạo môi trường ảo (Virtual Environment)**
+
+Bạn có thể sử dụng `venv` (tiêu chuẩn của Python) hoặc `conda` (khuyến nghị để quản lý các package dễ dàng hơn).
+
+**Tùy chọn A: Sử dụng Conda (Khuyến nghị)**
+
+Cài đặt [Miniconda](https://docs.conda.io/en/latest/miniconda.html) hoặc Anaconda nếu chưa có.
+
+```bash
+# Tạo môi trường conda với Python 3.9+
+conda create -n vsl_env python=3.9 -y
+
+# Kích hoạt môi trường (Dành cho mọi hệ điều hành: macOS, Linux, Windows)
+conda activate vsl_env
+```
+
+**Tùy chọn B: Sử dụng venv**
+
+*Trên macOS và Linux:*
+```bash
 python3 -m venv .venv
 source .venv/bin/activate
+```
 
-# 3. Cài đặt dependencies
+*Trên Windows (Command Prompt):*
+```cmd
+python -m venv .venv
+.venv\Scripts\activate.bat
+```
+
+*Trên Windows (PowerShell):*
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+```
+
+**3. Cài đặt dependencies**
+
+Sau khi đã kích hoạt môi trường ảo (bằng Conda hoặc venv), tiến hành cài đặt các thư viện cần thiết:
+
+```bash
 pip install -r requirements.txt
 ```
 
+> [!NOTE]
+> **Lưu ý về khả năng tương thích của thư viện MediaPipe:**
+> Trong quá trình triển khai trên các cấu hình phần cứng khác nhau, lỗi liên quan đến API của MediaPipe (ví dụ: `AttributeError: module 'mediapipe.python.solutions' has no attribute...`) hoặc lỗi phân giải `Descriptors` thường phát sinh do sự không đồng nhất về phiên bản thư viện.
+> Để đảm bảo tính ổn định, tệp `requirements.txt` đã được thiết lập các điều kiện môi trường nhằm tự động cài đặt phiên bản phù hợp:
+> - Sử dụng `mediapipe-silicon==0.9.2.1` đối với kiến trúc **Apple Silicon (Mac M-series)**.
+> - Sử dụng `mediapipe==0.9.0` đối với nền tảng **Windows / Linux / Mac Intel**.
+> - Cố định `protobuf==3.20.3` để ngăn ngừa xung đột dữ liệu tuần tự hóa (serialization).
+> **Yêu cầu hệ thống:** Môi trường ảo cần được cấu hình với **Python 3.9 hoặc 3.10** để đảm bảo quá trình cài đặt các phụ thuộc diễn ra thành công.
+
 ---
 
-## Chạy nhanh với keypoint đã xử lý
+## Chạy nhanh với bộ dữ liệu có sẵn
+
+Giả sử rằng bạn đã có bộ dữ liệu VSL400 front view được chuẩn bị trong thư mục `data/` nằm ngang hàng với thư mục `src/`, với cấu trúc như sau:
+
+```text
+data/processed/vsl_400/
+├── cam_1/
+│   └── ... (các file keypoint)
+└── cam_1.json
+```
+
+File metadata `cam_1.json` cần chứa danh sách các video với tối thiểu các trường thông tin sau:
+
+```json
+[
+  {
+    "video_id": "000000",
+    "signer_id": "001",
+    "fps": 25.0,
+    "resolution": 1080,
+    "gloss": "Anh",
+    "num_frames": 65,
+    "length_seconds": 2.6
+  }
+]
+```
+
+Để chạy huấn luyện với cấu hình mặc định:
 
 ```bash
-# Tải keypoint processed từ Drive về data/processed/vsl_400/
-# Chỉnh data_dir trong config:
-# data.data_dir: "data/processed/vsl_400"
-
 python src/train.py --config_path src/configs/training/spoter.yaml
 ```
 

@@ -1,6 +1,6 @@
 # Kiến trúc Pipeline — VSL Keypoint Pipeline
 
-> Tài liệu mô tả kiến trúc end-to-end của pipeline nhận dạng Ngôn ngữ Ký hiệu Tiếng Việt (Isolated Word-Level VSL Recognition), từ video thô đến kết quả dự đoán.
+> Tài liệu này trình bày kiến trúc tổng thể (end-to-end) của pipeline nhận dạng Ngôn ngữ Ký hiệu Tiếng Việt (Isolated Word-Level VSL Recognition), từ video thô đến kết quả dự đoán.
 
 ---
 
@@ -16,7 +16,7 @@
 8. [Module 6 — Huấn luyện](#8-module-6--huấn-luyện)
 9. [Module 7 — Đánh giá](#9-module-7--đánh-giá)
 10. [Module 8 — Suy diễn & Demo](#10-module-8--suy-diễn--demo)
-11. [Bảng tham số: Cố định / Thực nghiệm / Tùy chỉnh](#11-bảng-tham-số-cố-định--thực-nghiệm--tùy-chỉnh)
+11. [Phân loại Tham số: Cố định / Thực nghiệm / Tùy chỉnh](#11-phân-loại-tham-số-cố-định--thực-nghiệm--tùy-chỉnh)
 12. [Tính Mô đun & Khả năng Mở rộng](#12-tính-mô-đun--khả-năng-mở-rộng)
 
 ---
@@ -353,7 +353,7 @@ Mã nguồn SL-GCN nằm tại `src/models/sl_gcn/`. Tải cục bộ với `tru
 
 ---
 
-## 11. Bảng tham số: Cố định / Thực nghiệm / Tùy chỉnh
+## 11. Phân loại Tham số: Cố định / Thực nghiệm / Tùy chỉnh
 
 > **Chú giải:**
 > - 🟩 **Cố định**: Thuộc cốt lõi kiến trúc paper gốc — không nên thay đổi để tránh phá vỡ cấu trúc.
