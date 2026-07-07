@@ -65,18 +65,23 @@ Pipeline được phát triển dựa trên mã nguồn gốc từ **VSL400 Data
 
 ---
 
-## Dataset (VSL Keypoint Dataset)
+## Dataset (Phân Biệt Dữ Liệu)
 
-Dự án này sử dụng bộ dữ liệu **VSL Keypoint Dataset** được trích xuất từ nguồn video QIPEDC. Vì lý do tối ưu lưu trữ và bảo vệ danh tính (loại bỏ khuôn mặt), dữ liệu được phân phối dưới dạng **Pose Keypoint** thay vì video gốc, cho phép bắt tay vào huấn luyện mô hình ngay lập tức.
+Dự án này liên quan đến 2 bộ dữ liệu với các mục đích sử dụng khác nhau. Việc phân biệt rõ giúp tránh nhầm lẫn khi đối chiếu kết quả:
 
-**Thông tin tóm tắt:**
-- **Quy mô:** 1.051 clip (994 từ vựng duy nhất) từ 5 người ký.
+### 1. VSL400 Dataset (Dùng để Benchmark/Ablation Study)
+- **Quy mô:** 400 từ vựng (glosses), 28 người ký, quay từ nhiều góc máy.
+- **Mục đích:** Trong báo cáo Ablation Study, chúng tôi sử dụng tập con `cam_1` (góc máy thẳng) của VSL400 làm bộ dữ liệu chuẩn mực để chạy thực nghiệm. Dữ liệu này giúp đánh giá các phương pháp tiền xử lý và xác định cấu hình pipeline tối ưu nhất.
+
+### 2. VSL Keypoint Dataset (Dữ liệu phân phối kèm repo)
+- **Quy mô:** 1.051 clip (994 từ vựng duy nhất) từ 5 người ký. Trích xuất từ nguồn video QIPEDC.
 - **Phân chia:** Train (786) / Val (110) / Test (155).
+- **Mục đích:** Đây là bộ dữ liệu chúng tôi đã **áp dụng pipeline tối ưu nhất** (được benchmark từ VSL400) lên để trích xuất và chuẩn hóa keypoint. Dữ liệu được phân phối dưới dạng Pose Keypoint (đã loại bỏ khuôn mặt để bảo vệ danh tính và tối ưu lưu trữ), cho phép bắt tay vào huấn luyện mô hình ngay lập tức.
 - **Định dạng:** 
   - **Thô (`.pose`)**: Trích xuất từ MediaPipe Holistic.
   - **Đã tiền xử lý (`.npy`)**: Tensor có shape `(16, 54, 2)` tương ứng `(frames, joints, tọa độ x-y)` đã được chuẩn hóa.
 
-Bộ dữ liệu được lưu trữ trên Google Drive:
+Bộ dữ liệu **VSL Keypoint Dataset** được lưu trữ trên Google Drive:
 
 | Tài nguyên | Định dạng | Trạng thái | Link |
 | :--- | :--- | :--- | :--- |
@@ -315,6 +320,14 @@ Pipeline này được xây dựng dựa trên:
   year      = {2022}
 }
 
+@inproceedings{roh2024preprocessing,
+  author    = {Roh, Kyunggeun and Lee, Huije and Hwang, Eui Jun and Cho, Sukmin and Park, Jong C.},
+  title     = {Preprocessing Mediapipe Keypoints with Keypoint Reconstruction and Anchors for Isolated Sign Language Recognition},
+  booktitle = {Proceedings of the 11th Workshop on the Representation and Processing of Sign Languages},
+  year      = {2024},
+  pages     = {323--334}
+}
+
 @inproceedings{yan2018spatial,
   author    = {Sijie Yan and Yuanjun Xiong and Dahua Lin},
   title     = {Spatial Temporal Graph Convolutional Networks for Skeleton-Based Action Recognition},
@@ -339,4 +352,3 @@ Xem file [LICENSE](LICENSE) để biết chi tiết và danh sách các componen
 ## Liên hệ
 
 - GitHub Issues: [VietnameseSignLanguageRecognition/issues](https://github.com/thanhbinh55/VietnameseSignLanguageRecognition/issues)
-- Email: *(để trống — điền sau)*
